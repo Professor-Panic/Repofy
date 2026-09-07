@@ -26,8 +26,11 @@ def call_anthropic(diff_text):
       messages=[{"role": "user", "content": prompt}]
    )
 
-   raw_text = response.content[0].text
-   return json.loads(raw_text)
+
+   #Instead of asking the model for a "summary and a full message" in free-form text 
+   # and then trying to guess where one ends and the other begins, JSON gives you a format Python can parse reliably with json.loads()
+   raw_text = response.content[0].text  #Claude's API returns a list of content blocks
+   return json.loads(raw_text) #turns the JSON string into an actual Python dict, so you can access result["summary"] and result["full"] afterward.
             
 
 def call_ollama(diff_text, model="llama3.2"):
@@ -52,15 +55,17 @@ def call_ollama(diff_text, model="llama3.2"):
     return json.loads(raw_text)
 
 
-"""Tries Claude first (best quality). Falls back to local Ollama if the
+"""
+Tries Claude first (best quality). Falls back to local Ollama if the
     API call fails for any reason — out of credits, no internet, bad key,
     rate limited, etc. Whoever answers, the shape returned is identical:
-    {"summary": ..., "full": ...}."""
+    {"summary": ..., "full": ...}.
+"""
 
 def suggest_commit_message(diff_text):
     try:
         return call_anthropic(diff_text)
-    except Exception as e:
+    except Exception as e: #A broad catch -> so that no matter why the primary failed, use the backup.
         print(f"[ai] Anthropic call failed ({e}), falling back to Ollama...")
         return call_ollama(diff_text)
             
