@@ -29,5 +29,38 @@ def call_anthropic(diff_text):
    raw_text = response.content[0].text
    return json.loads(raw_text)
             
-            
+
+def call_ollama(diff_text, model="llama3.2"):
+    prompt = f"""
+               You are an expert software engineer writing a git commit message.
+               Given the diff below, respond with ONLY a JSON object, no other text before or after, in exactly this format:
+               {{
+                  "summary": "a single-line summary under 72 characters", 
+                  "full": "a fuller multi-line message: summary line, blank line, then bullet points on what changed and why"
+               }}
+   
+               Diff:
+               {diff_text}
+               """    
+    response = request.post(
+        "http://localhost:11434/api/generate",
+        json={"model":model, "prompt":prompt, "stream": False},
+        timeout=30,
+    )
+    response.raise_for_status()
+    raw_text = response.json()["response"]
+    return json.loads(raw_text)
+
+
+"""Tries Claude first (best quality). Falls back to local Ollama if the
+    API call fails for any reason — out of credits, no internet, bad key,
+    rate limited, etc. Whoever answers, the shape returned is identical:
+    {"summary": ..., "full": ...}."""
+
+def suggest_commit_message(diff_text):
+    try:
+        return call_anthropic(diff_text)
+    except Exception as e:
+        print(f"[ai] Anthropic call failed ({e}), falling back to Ollama...")
+        return call_ollama(diff_text)
             
