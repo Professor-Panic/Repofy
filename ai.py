@@ -91,8 +91,13 @@ Tries Claude first (best quality). Falls back to local Ollama if the
 
 def suggest_commit_message(diff_text):
     try:
-        return AnthropicProvider().suggest(diff_text)
+        result = AnthropicProvider().suggest(diff_text)
+        result["provider"] = "claude" # tag the source before returning -> labelling
+        return result
     except Exception as e: #A broad catch -> so that no matter why the primary failed, use the backup.
         print(f"[ai] Anthropic call failed ({e}), falling back to Ollama...")
-        return OllamaProvider().suggest(diff_text)
+
+        result = OllamaProvider().suggest(diff_text)
+        result["provider"] = "ollama"
+        return result
             

@@ -2,14 +2,30 @@ import ai
 ("g", "ai_commit", "AI-suggest commit"),
 
 async def action_ai_commit(self):
-   diff_text=getStagedDiff()
+   diff_text= getStagedDiff() #fetch the staged diff
    if not diff_text.strip():
       self.notify("Nothing staged to summarize.", title="AI commit", severity="warning")
-      return
+      return # nothing staged, nothing to suggest
 
    log_display = self.query_one(CommandLogDisplay)
    log_display.log("AI: generating commit message...", "Running...", "", 0)
 
+   # asyncio.to_thread because suggest_commit_message makes blocking network
+   # calls — running it directly here would freeze the whole UI while it waits.
+   result = await asyncio.to_thread(suggest_commit_message, diff_text)
+
+   #--------PREFILL THE INPUT WITH THE COMMIT MESSAGE-------
+   commit_input = self.query_one("#commit-message", Input)
+   commit_input.value = result["summary"]
+   self._last_full_message = result["full"] # stash for when they actually commit
+
+
+   #-----------LABEL FOR THE PROVIDER <INDICATOR>------------
+   provider_label = self.query_one("#ai-provider-label", Label)
+   if result["provider"] == "claude":
+      provider_label.update("☁ Claude")
+   else:
+      provider_label.update("⚙ Local (Ollama)")
 
    try:
       result = await asyncio.to_thread(ai.suggest_commit_message, diff_text)
