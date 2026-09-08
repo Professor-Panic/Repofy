@@ -1,4 +1,4 @@
-import os
+import os, re
 import json
 import requests #for ollama HTTP call
 from dotenv import load_dotenv
@@ -100,4 +100,32 @@ def suggest_commit_message(diff_text):
         result = OllamaProvider().suggest(diff_text)
         result["provider"] = "ollama"
         return result
-            
+
+
+#---------COMMIT MESSAGE QUALITY CHECK--------------
+CONVENTIONAL_TYPES = ("feat", "fix", "chore", "docs", "refactor", "test", "style", "perf")
+
+def check_conventional_format(summary):
+    """
+    Checks whether a commit summary follows Conventional Commits style, e.g. 'feat: add login screen' or 'fix(auth): handle expired tokens'.
+    Returns (is_valid, corrected_summary). If invalid, corrected_summary guesses a reasonable prefix rather than leaving it unformatted.
+    """
+    pattern = r"^(" + "|".join(CONVENTIONAL_TYPES) + r")(\([\w\-]+\))?: .+"
+    if re.match(pattern, summary):
+        return True, summary
+    # No valid prefix found — default to "chore:" as a safe, generic guess
+    # rather than silently failing or guessing wrong every time.
+    corrected = f"chore: {summary[0].lower()}{summary[1:]}" if summary else summary
+    return False, corrected
+
+#------------------STAGED-DIFF-SUMMARY--------------------------
+def summarize_diff(diff_text):
+    """
+    Turns a raw git diff into a simple per-file bullet list:
+    filename, lines added, lines removed. Pure text parsing — no AI call.
+    """
+
+    files={}
+    current_file = None
+
+    for

@@ -19,6 +19,11 @@ async def action_ai_commit(self):
    commit_input.value = result["summary"]
    self._last_full_message = result["full"] # stash for when they actually commit
 
+   #---------COMMIT MESSAGE QUALITY CHECK--------------
+   is_valid, corrected = check_conventional_format(result["summary"])
+   if not is_valid:
+      commit_input.value = corrected
+      log_display.log("ai suggest", f"Reformatted to: {corrected}", "", 0)
 
    #-----------LABEL FOR THE PROVIDER <INDICATOR>------------
    provider_label = self.query_one("#ai-provider-label", Label)
