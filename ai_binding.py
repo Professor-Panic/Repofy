@@ -59,7 +59,13 @@ async def action_ai_commit(self):
 
    log_display.log("AI: generated", result["full"], "", 0)
 
-  
+
+# ------------------EXPLAIN THIS DIFF--------------------------
+async def action_ai_explain(self):
+   diff_text = getStagedDiff()
+   if not diff_text.strip():
+      self.notify("Nothing staged to explain." tittle="AI explain", severity="warning")
+      return
 
 async def _handle_commit(self,message):
    # Called when the user actually hits commit, using whatever's in the

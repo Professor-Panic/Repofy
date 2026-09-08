@@ -102,7 +102,7 @@ def suggest_commit_message(diff_text):
         return result
 
 
-#---------COMMIT MESSAGE QUALITY CHECK--------------
+#---------------COMMIT MESSAGE QUALITY CHECK--------------
 #Shows judgment, not just generation.
 CONVENTIONAL_TYPES = ("feat", "fix", "chore", "docs", "refactor", "test", "style", "perf")
 
@@ -118,6 +118,8 @@ def check_conventional_format(summary):
     # rather than silently failing or guessing wrong every time.
     corrected = f"chore: {summary[0].lower()}{summary[1:]}" if summary else summary
     return False, corrected
+
+
 
 #------------------STAGED-DIFF-SUMMARY--------------------------
 #A bullet-point breakdown of files changed and what changed in each, shown above the commit box useful context, 
@@ -142,3 +144,33 @@ def summarize_diff(diff_text):
             files[current_file]["removed"] +=1
 
     return files  # e.g. {"main.py": {"added": 12, "removed": 3}}
+
+
+# ------------------EXPLAIN THIS DIFF--------------------------
+#This is exactly why _call_model was kept separate from suggest().
+def explain_diff(diff_text):
+     """
+        Plain-English explanation of what changed and why it might matter.
+        Returns {"explanation": ..., "provider": ...} — no JSON parsing needed
+        here since we just want free-form text back, not a structured object.
+
+    """
+
+     prompt = f"""
+                You are an expert software engineer reviewing a git diff for a teammate.
+                In 2-4 sentences, explain what changed and why it might matter. 
+                Plain English, no code repetition, no JSON.
+
+                Diff:
+                {diff_text}
+
+                """ 
+     try:
+         text = AnthropicProvider()._call_model(prompt)
+         provider = "claude"
+     except Exception as e:
+         print(f"[ai] Anthropic call failed ({e}), falling back to Ollama.....")
+         text = OllamaProvider()._call_model(prompt)
+         provider = "ollama"
+
+     return {"explanation": text.strip(), "provider":provider}
