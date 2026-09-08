@@ -71,7 +71,7 @@ class OllamaProvider(CommitMessageProvider):
 
           
     def _call_model(self, prompt):
-        response = request.post(
+        response = requests.post(
                 OLLAMA_URL,
                 json={"model":self.model, "prompt":prompt, "stream": False},
                 timeout=OLLAMA_TIMEOUT,
@@ -103,6 +103,7 @@ def suggest_commit_message(diff_text):
 
 
 #---------COMMIT MESSAGE QUALITY CHECK--------------
+#Shows judgment, not just generation.
 CONVENTIONAL_TYPES = ("feat", "fix", "chore", "docs", "refactor", "test", "style", "perf")
 
 def check_conventional_format(summary):
@@ -119,6 +120,8 @@ def check_conventional_format(summary):
     return False, corrected
 
 #------------------STAGED-DIFF-SUMMARY--------------------------
+#A bullet-point breakdown of files changed and what changed in each, shown above the commit box useful context, 
+# and reuses the same diff data you already have.
 def summarize_diff(diff_text):
     """
     Turns a raw git diff into a simple per-file bullet list:
@@ -128,4 +131,14 @@ def summarize_diff(diff_text):
     files={}
     current_file = None
 
-    for
+    for line in diff_text.splitlines():
+        if line.startswith("diff --git"):
+            # line looks like: diff --git a/path/to/file.py b/path/to/file.py
+            current_file = line.split("b/")[-1]
+            files[current_file]= {"added":0, "removed":0}
+        elif current_file and line.startswith("+") and not line.startswith("+++"):
+            files[current_file]["added"] += 1
+        elif current_file and line.startswith("-") and not line.startswith("---"):
+            files[current_file]["removed"] +=1
+
+    return files  # e.g. {"main.py": {"added": 12, "removed": 3}}
