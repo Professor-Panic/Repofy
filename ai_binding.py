@@ -5,6 +5,7 @@ import asyncio
 # class RepofyApp(App):
 #     BINDINGS = [
 #         ("g", "ai_commit", "AI-suggest commit"),
+#         ("e", "ai_explain", "AI-explain diff"),
 #         # ...your other bindings...
 #     ]
 
@@ -62,10 +63,36 @@ async def action_ai_commit(self):
 
 # ------------------EXPLAIN THIS DIFF--------------------------
 async def action_ai_explain(self):
-   diff_text = getStagedDiff()
+   diff_text = getStagedDiff() #fetch the staged diff -> same source as the commit action
    if not diff_text.strip():
-      self.notify("Nothing staged to explain." tittle="AI explain", severity="warning")
-      return
+      self.notify("Nothing staged to explain.", title="AI explain", severity="warning") #was "tittle" — fixed, notify() has no such param
+      return # nothing staged, nothing to explain
+
+   log_display = self.query_one(CommandLogDisplay)
+   log_display.log("AI: explaining diff...", "Running...", "", 0)
+
+   # asyncio.to_thread here too — explain_diff makes the same kind of blocking network call as suggest_commit_message does above.
+   try:
+      result = await asyncio.to_thread(ai.explain_diff, diff_text)
+   except Exception as e:
+      self.notify(f"AI explanation failed: {e}", title="AI explain", severity="warning")
+      return # both providers failed => nothing to show
+
+
+   #show the diff explaination
+   self.query_one("#diff-explanation", Static).update(result["explanation"])
+
+
+   #-----------LABEL FOR THE PROVIDER <INDICATOR>------------
+   #same label widget the commit action uses => whichever ran last wins the display
+   provider_label = self.query_one("#ai-provider-label", Label)
+   if result["provider"] == "claude":
+      provider_label.update("☁ Claude")
+   else:
+      provider_label.update("⚙ Local (Ollama)")
+
+   log_display.log("AI: explained", result["explanation"], "", 0)
+
 
 async def _handle_commit(self,message):
    # Called when the user actually hits commit, using whatever's in the
