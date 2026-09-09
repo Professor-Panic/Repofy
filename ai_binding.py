@@ -1,7 +1,6 @@
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Input, Label, Static
-from Ui import CommandLogDisplay
 import ai
 import asyncio
 
@@ -34,6 +33,12 @@ class AICommitPanel(Container):
        yield Static("", id="ai-diff-explanation")
 
 
+    #---------SHARED HELPER: fetch the log widget without a top-level circular import-------
+    def _log_display(self):
+       from Ui import CommandLogDisplay  # imported here, not at module scope, to avoid Ui <-> ai_binding circularity
+       return self.app.query_one(CommandLogDisplay)
+
+
 
     #---------SHARED HELPER: runs any AI call the same safe way-------
     # Both "suggest a commit message" and "explain this diff" need the same three steps:
@@ -42,7 +47,7 @@ class AICommitPanel(Container):
     #   ->update the provider label the same way
     #  This is that shared shape, so neither action has to repeat it. 
     async def _run_ai_task(self, ai_function, diff_text, task_label, notify_title):
-       log_display = self.app.query_one(CommandLogDisplay)
+       log_display = self._log_display()
        log_display.log(f"AI: {task_label}...", "Running...", "",0) 
 
 
@@ -83,7 +88,7 @@ class AICommitPanel(Container):
 
        self.show_diff_summary(diff_text)
 
-       log_display = self.app.query_one(CommandLogDisplay)  # fetch once, reuse below
+       log_display = self._log_display()  # fetch once, reuse below
 
        result = await self._run_ai_task(ai.suggest_commit_message, diff_text, "generating commit message", "AI commit")
        if result is None:
@@ -118,7 +123,7 @@ class AICommitPanel(Container):
           return # both providers failed => nothing to show
 
        self.query_one("#ai-diff-explanation", Static).update(result["explanation"])
-       self.app.query_one(CommandLogDisplay).log("AI: explained", result["explanation"], "", 0)
+       self._log_display().log("AI: explained", result["explanation"], "", 0)
 
 
     #--------GETTER: for the commit button-------

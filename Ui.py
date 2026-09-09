@@ -2,14 +2,17 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalGroup, VerticalScroll, Container, ScrollableContainer, Horizontal, Vertical
 from textual.reactive import reactive
 from rich.text import Text
-from textual.widgets import Footer, Header, Button, Digits, Label,TextArea
+from textual.widgets import Footer, Header, Button, Digits, Label, TextArea
 from textual.widgets import ListView, ListItem, Label, Input
 from textual.screen import ModalScreen
 from textual.message import Message
 from git_checker import *
 from Sprinter import SprintTodo, SprintTodoError
 from File_picker import FilePickerModal
+from ai_binding import AICommitPanel
 import asyncio
+
+
 def build_diff_display(diff_text: str) -> Text:
     result = Text()
     for line in diff_text.splitlines(keepends=True):
@@ -22,23 +25,34 @@ def build_diff_display(diff_text: str) -> Text:
         else:
             result.append(line)
     return result
+
+
 class CommitModal(ModalScreen):
     BINDINGS = [("escape", "dismiss_modal", "Cancel")]
+
+    def __init__(self, initial: str = ""):
+        super().__init__()
+        self.initial_value = initial
+
     def compose(self) -> ComposeResult:
         yield Container(
             Label("Commit message:"),
-            Input(placeholder="Type your commit message...", id="modal-commit-input"),
+            Input(placeholder="Type your commit message...", value=self.initial_value, id="modal-commit-input"),
             id="commit-modal-box"
         )
 
     def on_mount(self):
-        self.query_one("#modal-commit-input", Input).focus()
+        field = self.query_one("#modal-commit-input", Input)
+        field.focus()
+        field.cursor_position = len(field.value)
 
     def action_dismiss_modal(self):
         self.dismiss(None)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         self.dismiss(event.value)
+
+
 class TodoModal(ModalScreen):
     """Small single-input modal, styled like CommitModal. Reused for adding
     tasks, renaming tasks, and setting deadlines by swapping the label/
@@ -69,6 +83,7 @@ class TodoModal(ModalScreen):
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         self.dismiss(event.value)
 
+
 class CommandPaletteModal(ModalScreen):
     BINDINGS = [
         ("space", "select_stage", "Stage all changes"),
@@ -77,11 +92,12 @@ class CommandPaletteModal(ModalScreen):
         ("m", "select_merge", "Merge branch"),
         ("c", "create_branch", "Create branch"),
         ("d", "delete_branch", "Delete branch"),
-
         ("l", "select_pull", "Pull"),
         ("p", "select_push", "Push"),
         ("t", "select_task_board", "Sprint board"),
-        ("f", "select_file_picker","Directory Picker"),
+        ("f", "select_file_picker", "Directory Picker"),
+        ("g", "select_ai_commit", "AI commit"),
+        ("e", "select_ai_explain", "AI explain"),
         ("escape", "dismiss_modal", "Cancel"),
     ]
 
@@ -99,6 +115,8 @@ class CommandPaletteModal(ModalScreen):
                 ListItem(Label("p  Push"), name="push"),
                 ListItem(Label("t  Sprint board"), name="taskboard"),
                 ListItem(Label("f  Change Directory"), name="dir_picker"),
+                ListItem(Label("g  AI commit suggestion"), name="ai_commit"),
+                ListItem(Label("e  AI explain diff"), name="ai_explain"),
             ),
             id="palette-box"
         )
@@ -106,33 +124,46 @@ class CommandPaletteModal(ModalScreen):
 
     def action_dismiss_modal(self):
         self.dismiss(None)
+
     def action_select_stage(self):
-         self.dismiss(("stage", None))
+        self.dismiss(("stage", None))
+
     def action_select_stash(self):
         self.dismiss(("stash", None))
+
     def action_select_task_board(self):
         self.dismiss(("taskboard", None))
 
     def action_select_switch(self):
         self.dismiss(("need_branch", "switch"))
+
     def action_select_file_picker(self):
-        self.dismiss(("dir_picker",None))
+        self.dismiss(("dir_picker", None))
 
     def action_select_merge(self):
         self.dismiss(("need_branch", "merge"))
+
     def action_create_branch(self):
-        self.dismiss(("need_branch","create"))
+        self.dismiss(("need_branch", "create"))
+
     def action_delete_branch(self):
-        self.dismiss(("need_branch","delete"))
+        self.dismiss(("need_branch", "delete"))
+
     def action_select_pull(self):
         self.dismiss(("pull", None))
 
     def action_select_push(self):
         self.dismiss(("push", None))
 
+    def action_select_ai_commit(self):
+        self.dismiss(("ai_commit", None))
+
+    def action_select_ai_explain(self):
+        self.dismiss(("ai_explain", None))
+
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         action = event.item.name
-        if action in ("switch", "merge","create","delete"):
+        if action in ("switch", "merge", "create", "delete"):
             self.dismiss(("need_branch", action))
         else:
             self.dismiss((action, None))
@@ -156,6 +187,8 @@ class BranchInputModal(ModalScreen):
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         self.dismiss(event.value)
+
+
 class BranchSelectModal(ModalScreen):
     """Modal to choose which remote branch should be treated as the main
     branch for the sprint TODO."""
@@ -172,7 +205,6 @@ class BranchSelectModal(ModalScreen):
     async def on_mount(self) -> None:
         list_view = self.query_one("#branch-select-list", ListView)
         await list_view.clear()
-        # Get remote branches (e.g., origin/main, origin/master, ...)
         try:
             result = subprocess.run(
                 ["git", "branch", "-r", "--format=%(refname:short)"],
@@ -182,7 +214,6 @@ class BranchSelectModal(ModalScreen):
         except subprocess.CalledProcessError:
             branches = []
         for branch in branches:
-            # Remove the leading "origin/" for display and value
             if branch.startswith("origin/"):
                 name = branch[len("origin/"):]
             else:
@@ -195,6 +226,7 @@ class BranchSelectModal(ModalScreen):
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         self.dismiss(event.item.name)
+
 
 class TaskItem(ListItem):
     """One task card on the sprint board. Right-click deletes it."""
@@ -242,7 +274,6 @@ class SprintBoardModal(ModalScreen):
         yield Container(
             Label("Sprint board", id="sprint-title"),
             Horizontal(id="board-columns"),
-            # Help popup – initially hidden
             VerticalScroll(
                 Label(
                     "Key Bindings:\n"
@@ -277,10 +308,7 @@ class SprintBoardModal(ModalScreen):
         except SprintTodoError as e:
             self.notify(str(e), title="Sprint board", severity="error")
         await self.refresh_board(focus_first=True)
-        # Ensure help popup is hidden initially
         self.query_one("#help-popup").display = False
-
-    # ---------------- board rendering ----------------
 
     async def refresh_board(self, focus_first: bool = False) -> None:
         columns = self.query_one("#board-columns", Horizontal)
@@ -320,8 +348,6 @@ class SprintBoardModal(ModalScreen):
                         list_view.index = i
                         break
 
-    # ---------------- focus helpers ----------------
-
     def _current_list_view(self):
         focused = self.app.focused
         return focused if isinstance(focused, ListView) else None
@@ -341,19 +367,14 @@ class SprintBoardModal(ModalScreen):
             return None
         return int(lv.highlighted_child.name)
 
-    # ---------------- new / modified actions ----------------
-
     async def action_toggle_help(self) -> None:
-        """Toggle the help popup visibility."""
         help_popup = self.query_one("#help-popup")
         help_popup.display = not help_popup.display
 
     async def action_save_changes(self) -> None:
-        """Push all pending changes without closing the board."""
         await self._push_changes()
 
     async def _push_changes(self) -> None:
-        """Push if there are recorded operations."""
         if self.todo.has_pending_changes:
             try:
                 await asyncio.to_thread(self.todo.push, "Update sprint TODO")
@@ -367,17 +388,13 @@ class SprintBoardModal(ModalScreen):
         if self.app.screen is self:
             self.dismiss(None)
 
-    # Override the button handler to also push before closing
     async def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "add-task-btn":
             await self.action_add_task()
         elif event.button.id == "close-btn":
             await self._push_changes()
-            # Only dismiss if the screen is still active (on top of stack)
             if self.app.screen is self:
                 self.dismiss(None)
-
-    # ---------------- task/index actions (no direct push) ----------------
 
     async def action_add_task(self):
         if not self.todo.indices:
@@ -490,8 +507,6 @@ class SprintBoardModal(ModalScreen):
             await self.refresh_board()
             return
         await self.refresh_board()
-        # Follow the moved card into its new column rather than leaving
-        # focus behind in the old one.
         try:
             new_list = self.query_one(f"#list-{new_flag}", ListView)
         except Exception:
@@ -503,7 +518,6 @@ class SprintBoardModal(ModalScreen):
                 break
 
     async def action_add_index(self):
-        """Prompt for a new index name and add it at the end."""
         async def handle(name):
             if not name:
                 return
@@ -518,7 +532,6 @@ class SprintBoardModal(ModalScreen):
         )
 
     async def action_rename_index(self):
-        """Rename the index of the currently focused column."""
         flag = self._current_flag()
         if flag is None:
             self.notify("Focus a column first.", title="Rename index", severity="warning")
@@ -544,7 +557,6 @@ class SprintBoardModal(ModalScreen):
         )
 
     async def action_delete_index(self):
-        """Delete the index of the currently focused column if it has no tasks."""
         flag = self._current_flag()
         if flag is None:
             self.notify("Focus a column first.", title="Delete index", severity="warning")
@@ -564,6 +576,7 @@ class SprintBoardModal(ModalScreen):
             self.notify(str(e), title="Delete index", severity="error")
         await self.refresh_board()
 
+
 class StatusDisplay(Container):
     is_git = reactive(False)
 
@@ -575,7 +588,6 @@ class StatusDisplay(Container):
         self.is_git = is_git_repo()
 
     def watch_is_git(self, is_git: bool) -> None:
-        """Called automatically whenever is_git changes."""
         self.remove_children()
         if is_git:
             self.mount(Label("Git repo detected"))
@@ -591,11 +603,13 @@ class CommitDisplay(Container):
         self._last_commits = None
         self.call_later(self.refresh_display)
         self.set_interval(5, self.refresh_display)
+
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         if event.item is None:
             return
         diff_text = getCommitDiff(event.item.name)
         self.app.query_one(DiffDisplay).diff_text = diff_text
+
     async def refresh_display(self):
         commits = getCommitsList()
         if commits == self._last_commits:
@@ -610,8 +624,9 @@ class CommitDisplay(Container):
 
 
 class BranchDisplay(Container):
-    BINDINGS=[("b","branch","Checkout to branch")]
-    selected_branch=None
+    BINDINGS = [("b", "branch", "Checkout to branch")]
+    selected_branch = None
+
     def compose(self):
         yield ListView(id="Branch-list")
 
@@ -619,8 +634,10 @@ class BranchDisplay(Container):
         self._last_branches = None
         self.call_later(self.refresh_display)
         self.set_interval(5, self.refresh_display)
+
     def on_list_view_selected(self, event: ListView.Selected) -> None:
-        self.selected_branch=event.item.name.strip("*")[2:]
+        self.selected_branch = event.item.name.strip("*")[2:]
+
     async def action_branch(self):
         if self.selected_branch is None:
             return
@@ -630,9 +647,10 @@ class BranchDisplay(Container):
         log_display.log(f"git checkout {self.selected_branch} (done)", stdout, stderr, returncode)
         await self.app.query_one(FileDisplay).refresh_display(force=True)
         await self.refresh_display()
+
     async def refresh_display(self):
         branches = GetBranchesList()
-        list_view=self.query_one("#Branch-list")
+        list_view = self.query_one("#Branch-list")
         if branches == self._last_branches:
             return
         self._last_branches = branches
@@ -641,6 +659,7 @@ class BranchDisplay(Container):
             await list_view.append(
                 ListItem(Label(f, markup=False), name=f)
             )
+
 
 class StashDisplay(Container):
     def compose(self):
@@ -659,6 +678,7 @@ class StashDisplay(Container):
         await self.remove_children()
         self.mount(Label(stashes or "No stashes", markup=False))
 
+
 class DiffDisplay(ScrollableContainer):
     diff_text = reactive("")
 
@@ -669,6 +689,8 @@ class DiffDisplay(ScrollableContainer):
         else:
             self.mount(Label("No change detected"))
         self.scroll_home(animate=False)
+
+
 class ConflictDisplay(Container):
     BINDINGS = [
         ("ctrl+a", "abort", "Abort merge"),
@@ -712,9 +734,11 @@ class ConflictDisplay(Container):
 
 
 class FileDisplay(Container):
-    BINDINGS = [("space", "toggle_stage", "Stage/Unstage"),("s", "toggle_stash", "Stash file")]
+    BINDINGS = [("space", "toggle_stage", "Stage/Unstage"), ("s", "toggle_stash", "Stash file")]
+
     def compose(self):
         yield ListView(id="Files-list")
+
     def on_mount(self) -> None:
         self._last_files = None
         self.call_later(self.refresh_display, force=True, focus=True)
@@ -723,19 +747,17 @@ class FileDisplay(Container):
     async def refresh_display(self, force: bool = False, focus: bool = False):
         list_view = self.query_one("#Files-list")
         has_focus = list_view.has_focus
-        #If refresh_display is called but its not forced or display isnt focused
-        #exit early
         if not force and not has_focus:
             return
 
         files = GetFilesList()
         if not force and files == self._last_files:
-            return  # nothing changed, skip the rebuild entirely
+            return
         self._last_files = files
         selected_name = None
         if list_view.highlighted_child is not None:
             selected_name = list_view.highlighted_child.name
-        
+
         await list_view.clear()
         for f in files:
             await list_view.append(
@@ -776,6 +798,7 @@ class FileDisplay(Container):
             stageFile(filename)
 
         await self.refresh_display(force=True)
+
     async def action_toggle_stash(self):
         list_view = self.query_one(ListView)
         highlighted = list_view.highlighted_child
@@ -788,7 +811,7 @@ class FileDisplay(Container):
         log_display.log(f"git stash  --{filename} (done)", stdout, stderr, returncode)
         await self.app.query_one(FileDisplay).refresh_display(force=True)
 
-                
+
 class StashDisplay(Container):
     def compose(self):
         return []
@@ -811,7 +834,7 @@ class CommandLogDisplay(Container):
         yield Input(placeholder="Run a command (e.g. git status)", id="command-input")
 
     def on_mount(self):
-        pass  # nothing async needed now, widgets built in compose
+        pass
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id != "command-input":
@@ -825,8 +848,8 @@ class CommandLogDisplay(Container):
 
     def log(self, command_label: str, stdout: str, stderr: str, returncode: int) -> None:
         output = stdout if returncode == 0 else f"[FAILED] {stderr}"
-        if returncode!=0:
-            self.notify(stderr,title=command_label,severity="error")
+        if returncode != 0:
+            self.notify(stderr, title=command_label, severity="error")
         self.log_text += f"$ {command_label}\n{output}\n"
         self._update_log()
 
@@ -835,15 +858,64 @@ class CommandLogDisplay(Container):
         log_area.load_text(self.log_text)
         log_area.scroll_end(animate=False)
 
+
+class AIControlModal(ModalScreen):
+    BINDINGS = [
+        ("escape", "dismiss_modal", "Close"),
+        ("c", "commit_suggestion", "Commit with AI message"),
+    ]
+
+    def __init__(self, action: str | None = None):
+        super().__init__()
+        self.action = action  # 'commit', 'explain', or None
+
+    def compose(self) -> ComposeResult:
+        yield Container(
+            AICommitPanel(id="ai-panel-modal"),
+            Button("Close", id="close-ai-modal"),
+            id="ai-modal-container"
+        )
+
+    def on_mount(self) -> None:
+        if self.action == "commit":
+            self.run_worker(self._run_commit())
+        elif self.action == "explain":
+            self.run_worker(self._run_explain())
+
+    async def _run_commit(self):
+        diff_text = getStagedDiff()
+        panel = self.query_one(AICommitPanel)
+        await panel.generate_suggestion(diff_text)
+
+    async def _run_explain(self):
+        diff_text = getStagedDiff()
+        panel = self.query_one(AICommitPanel)
+        await panel.generate_explanation(diff_text)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "close-ai-modal":
+            self.dismiss(None)
+    def action_commit_suggestion(self):
+        """Dismiss the modal and return the AI-generated commit message (if any)."""
+        panel = self.query_one(AICommitPanel)
+        message = panel.get_full_message() or panel.get_commit_message()
+        self.dismiss(message)
+
+    def action_dismiss_modal(self):
+        self.dismiss(None)
+
+
 class Repofy(App):
     CSS_PATH = "git_tui.tcss"
     BINDINGS = [
         ("c", "commit", "Commit code"),
-        ("p","push","Push code"),
-        ("l","pull","Pull code"),
-        ("ctrl+s","stage_all","Stage all changes"),
+        ("p", "push", "Push code"),
+        ("l", "pull", "Pull code"),
+        ("ctrl+s", "stage_all", "Stage all changes"),
         ("d", "toggle_dark", "Toggle dark mode"),
         ("t", "open_sprint_board", "Sprint board"),
+        ("g", "ai_commit", "AI-suggest commit"),
+        ("e", "ai_explain", "AI-explain diff"),
         (":", "open_palette", "Commands"),
         ("ctrl+x", "quit", "Quit"),
     ]
@@ -876,40 +948,56 @@ class Repofy(App):
     async def action_commit(self):
         async def handle_result(message: str | None) -> None:
             if not message:
-                return  # cancelled or empty
+                return
             log_display = self.query_one(CommandLogDisplay)
             log_display.log(f'git commit -m "{message}"', "Running...", "", 0)
             stdout, stderr, returncode = await asyncio.to_thread(doCommit, message)
             log_display.log(f'git commit -m "{message}" (done)', stdout, stderr, returncode)
             await self.query_one(FileDisplay).refresh_display(force=True)
 
-        self.push_screen(CommitModal(), handle_result)
+        # We no longer prefill from AICommitPanel; user can still type manually.
+        self.push_screen(CommitModal())
+
+    async def action_ai_commit(self):
+        modal = AIControlModal(action="commit")
+        message = await self.push_screen_wait(modal)
+        if message:
+            log_display = self.query_one(CommandLogDisplay)
+            log_display.log(f'git commit -m "{message}"', "Running...", "", 0)
+            stdout, stderr, returncode = await asyncio.to_thread(doCommit, message)
+            log_display.log(f'git commit -m "{message}" (done)', stdout, stderr, returncode)
+            await self.query_one(FileDisplay).refresh_display(force=True)
+
+    async def action_ai_explain(self):
+        self.push_screen(AIControlModal(action="explain"))
+
     async def action_push(self):
         log_display = self.query_one(CommandLogDisplay)
         log_display.log(f'git push', "Running...", "", 0)
         stdout, stderr, returncode = await asyncio.to_thread(doPush)
         log_display.log(f'git push" (done)', stdout, stderr, returncode)
         await self.query_one(FileDisplay).refresh_display(force=True)
+
     async def action_pull(self):
         log_display = self.query_one(CommandLogDisplay)
         log_display.log(f'git pull', "Running...", "", 0)
         stdout, stderr, returncode = await asyncio.to_thread(doPull)
         log_display.log(f'git pull" (done)', stdout, stderr, returncode)
         await self.query_one(FileDisplay).refresh_display(force=True)
+
     async def action_stage_all(self):
         log_display = self.query_one(CommandLogDisplay)
         log_display.log(f'git add .', "Running...", "", 0)
         stdout, stderr, returncode = await asyncio.to_thread(stageAll)
         log_display.log(f'git add ." (done)', stdout, stderr, returncode)
         await self.query_one(FileDisplay).refresh_display(force=True)
+
     async def action_open_sprint_board(self):
         if self.todo.main_branch is None:
-            # Need user to select the main branch first
             async def handle_branch(branch: str | None) -> None:
                 if branch:
                     self.todo.set_main_branch(branch)
                     self.push_screen(SprintBoardModal(self.todo))
-                # else: cancelled, do nothing
             self.push_screen(BranchSelectModal(), handle_branch)
         else:
             self.push_screen(SprintBoardModal(self.todo))
@@ -922,7 +1010,7 @@ class Repofy(App):
             log_display = self.query_one(CommandLogDisplay)
 
             if action == "need_branch":
-                operation = extra  # "switch" or "merge"
+                operation = extra
 
                 async def handle_branch(branch_name: str | None) -> None:
                     if not branch_name:
@@ -947,33 +1035,38 @@ class Repofy(App):
                     await self.query_one(ConflictDisplay).refresh_display()
 
                 self.push_screen(BranchInputModal(), handle_branch)
+
             elif action == "stash":
                 log_display.log("git stash", "Running...", "", 0)
                 stdout, stderr, returncode = await asyncio.to_thread(doStash)
                 log_display.log("git stash (done)", stdout, stderr, returncode)
                 await self.query_one(FileDisplay).refresh_display(force=True)
+
             elif action == "stage":
                 log_display.log("git add .", "Running...", "", 0)
                 stdout, stderr, returncode = await asyncio.to_thread(stageAll)
                 log_display.log("git add . (done)", stdout, stderr, returncode)
                 await self.query_one(FileDisplay).refresh_display(force=True)
+
             elif action == "pull":
                 log_display.log("git pull", "Running...", "", 0)
                 stdout, stderr, returncode = await asyncio.to_thread(doPull)
                 log_display.log("git pull (done)", stdout, stderr, returncode)
                 await self.query_one(FileDisplay).refresh_display(force=True)
+
             elif action == "push":
                 log_display.log("git push", "Running...", "", 0)
                 stdout, stderr, returncode = await asyncio.to_thread(doPush)
                 log_display.log("git push (done)", stdout, stderr, returncode)
+
             elif action == "taskboard":
                 self.push_screen(SprintBoardModal(self.todo))
+
             elif action == "dir_picker":
                 async def handle_dir_picker(path):
                     if path is not None:
                         if path.is_dir():
-                            os.chdir(path)   # change the process’s working directory
-                        # refresh all relevant UI components
+                            os.chdir(path)
                         await self.query_one(FileDisplay).refresh_display(force=True)
                         self.query_one(StatusDisplay).check_status()
                         await self.query_one(BranchDisplay).refresh_display()
@@ -981,6 +1074,12 @@ class Repofy(App):
                         await self.query_one(ConflictDisplay).refresh_display()
                         self.notify(f"Changed directory to {path}", title="Directory changed")
                 self.push_screen(FilePickerModal(), handle_dir_picker)
+
+            elif action == "ai_commit":
+                self.push_screen(AIControlModal(action="commit"))
+
+            elif action == "ai_explain":
+                self.push_screen(AIControlModal(action="explain"))
 
         self.push_screen(CommandPaletteModal(), handle_choice)
 

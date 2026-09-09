@@ -43,6 +43,15 @@ def getDiff(filename):
     capture_output=True,
     text=True)
     return result.stdout
+def getStagedDiff():
+    """Full diff of everything currently staged (git diff --cached). This is
+    what the AI commit-message / explain-diff features summarize — unlike
+    getDiff(filename), which only shows one file's unstaged changes."""
+    result = subprocess.run(
+    ["git", "diff", "--cached"],
+    capture_output=True,
+    text=True)
+    return result.stdout
 def doCommit(message):
     result = subprocess.run(
         ["git", "commit", "-m", message],

@@ -209,3 +209,30 @@ SprintBoardModal {
     overflow-y: auto;
     display: none;
 }
+/* AI Control Modal */
+AIControlModal {
+    align: center middle;
+    background: $background 60%;
+}
+
+#ai-modal-container {
+    width: 80%;
+    height: 80%;
+    border: solid white;
+    padding: 1 2;
+    background: $surface;
+    layout: vertical;
+    overflow-y: auto;
+}
+
+#ai-modal-container AICommitPanel {
+    height: 1fr;
+    width: 100%;
+    overflow-y: auto;
+}
+
+#close-ai-modal {
+    width: 20;
+    align: right middle;
+    margin-top: 1;
+}
