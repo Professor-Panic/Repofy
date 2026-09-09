@@ -956,17 +956,20 @@ class Repofy(App):
             await self.query_one(FileDisplay).refresh_display(force=True)
 
         # We no longer prefill from AICommitPanel; user can still type manually.
+        #this was previously   self.push_screen(CommitModal()) didn't work
         self.push_screen(CommitModal(), handle_result)
 
     async def action_ai_commit(self):
-        modal = AIControlModal(action="commit")
-        message = await self.push_screen_wait(modal)
-        if message:
+        async def handle_result(message: str | None) -> None:
+            if not message:
+                return
             log_display = self.query_one(CommandLogDisplay)
             log_display.log(f'git commit -m "{message}"', "Running...", "", 0)
             stdout, stderr, returncode = await asyncio.to_thread(doCommit, message)
             log_display.log(f'git commit -m "{message}" (done)', stdout, stderr, returncode)
             await self.query_one(FileDisplay).refresh_display(force=True)
+
+        self.push_screen(AIControlModal(action="commit"), handle_result)
 
     async def action_ai_explain(self):
         self.push_screen(AIControlModal(action="explain"))

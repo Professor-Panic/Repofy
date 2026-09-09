@@ -17,7 +17,7 @@ You are an expert software engineer writing a git commit message.
 Given the diff below, respond with ONLY a JSON object, no other text before or after, in exactly this format:
 {{
 "summary": "a single-line summary under 72 characters", 
-"full": "a fuller multi-line message: summary line, blank line, then bullet points on what changed and why"
+"full": "a fuller multi-line message: summary line, blank line, then bullet points on what changed only"
 }}
 
 Diff:
@@ -108,11 +108,14 @@ def summarize_diff(diff_text):
             files[current_file]["removed"] += 1
     return files
 
+
+# ------------------- EXPLAIN THIS DIFF --------------------------
 def explain_diff(diff_text):
     prompt = f"""
 You are an expert software engineer reviewing a git diff for a teammate.
-In 1-2 sentences, explain what changed.
-Plain English, no code repetition, no JSON.Keep it short and consise.Don't explain the benefits
+In 1-2 sentences, explain what changed and why it might matter. 
+Plain English, no code repetition, no JSON.
+
 Diff:
 {diff_text}
 """
