@@ -1,6 +1,7 @@
 from textual.app import ComposeResult
 from textual.containers import Container
 from textual.widgets import Input, Label, Static
+from log_display import CommandLogDisplay  # imported here, not at module scope, to avoid Ui <-> ai_binding circularity
 import ai
 import asyncio
 
@@ -29,7 +30,6 @@ class AICommitPanel(Container):
 
     #---------SHARED HELPER: fetch the log widget without a top-level circular import-------
     def _log_display(self):
-       from Ui import CommandLogDisplay  # imported here, not at module scope, to avoid Ui <-> ai_binding circularity
        return self.app.query_one(CommandLogDisplay)
 
 
