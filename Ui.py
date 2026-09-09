@@ -956,7 +956,7 @@ class Repofy(App):
             await self.query_one(FileDisplay).refresh_display(force=True)
 
         # We no longer prefill from AICommitPanel; user can still type manually.
-        self.push_screen(CommitModal())
+        self.push_screen(CommitModal(), handle_result)
 
     async def action_ai_commit(self):
         modal = AIControlModal(action="commit")

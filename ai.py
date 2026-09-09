@@ -108,14 +108,11 @@ def summarize_diff(diff_text):
             files[current_file]["removed"] += 1
     return files
 
-
-# ------------------- EXPLAIN THIS DIFF --------------------------
 def explain_diff(diff_text):
     prompt = f"""
 You are an expert software engineer reviewing a git diff for a teammate.
-In 1-2 sentences, explain what changed and why it might matter. 
-Plain English, no code repetition, no JSON.
-
+In 1-2 sentences, explain what changed.
+Plain English, no code repetition, no JSON.Keep it short and consise.Don't explain the benefits
 Diff:
 {diff_text}
 """

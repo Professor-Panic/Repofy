@@ -13,12 +13,6 @@ import asyncio
 
 
 class AICommitPanel(Container):
-    """
-    Self-contained AI commit assistant. Owns its own input box, provider
-    label, and diff areas — nothing outside this file needs matching widget
-    IDs for it to work, the same way FilePickerModal owns its own widgets.
-    """
-
 
     def __init__(self, *args, **kwargs):
        super().__init__(*args, **kwargs)
