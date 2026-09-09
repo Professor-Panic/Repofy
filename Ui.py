@@ -922,7 +922,6 @@ class Repofy(App):
         ("p", "push", "Push code"),
         ("l", "pull", "Pull code"),
         ("ctrl+s", "stage_all", "Stage all changes"),
-        ("d", "toggle_dark", "Toggle dark mode"),
         ("t", "open_sprint_board", "Sprint board"),
         ("g", "ai_commit", "AI-suggest commit"),
         ("e", "ai_explain", "AI-explain diff"),
@@ -949,12 +948,6 @@ class Repofy(App):
             ConflictDisplay(id="conflicts"),
             CommandLogDisplay(id="command-log"),
             id="right-column")
-
-    def action_toggle_dark(self):
-        self.theme = (
-            "textual-dark" if self.theme == "textual-light" else "textual-light"
-        )
-
     async def action_commit(self):
         async def handle_result(message: str | None) -> None:
             if not message:
