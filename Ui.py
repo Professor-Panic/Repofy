@@ -191,9 +191,6 @@ class BranchInputModal(ModalScreen):
 
 
 class BranchSelectModal(ModalScreen):
-    """Modal to choose which remote branch should be treated as the main
-    branch for the sprint TODO."""
-
     BINDINGS = [("escape", "dismiss_modal", "Cancel")]
 
     def compose(self) -> ComposeResult:
@@ -230,8 +227,6 @@ class BranchSelectModal(ModalScreen):
 
 
 class TaskItem(ListItem):
-    """One task card on the sprint board. Right-click deletes it."""
-
     class DeleteRequested(Message):
         def __init__(self, task_num: int) -> None:
             self.task_num = task_num
@@ -248,7 +243,6 @@ class TaskItem(ListItem):
         if getattr(event, "button", 1) == 3:
             event.stop()
             self.post_message(self.DeleteRequested(self.task_num))
-
 
 class SprintBoardModal(ModalScreen):
     BINDINGS = [
@@ -378,12 +372,10 @@ class SprintBoardModal(ModalScreen):
     async def _push_changes(self) -> None:
         if self.todo.has_pending_changes:
             try:
-                await asyncio.to_thread(self.todo.push, "Update sprint TODO")
+                await asyncio.to_thread(self.todo.push, "Update sprint Tasks")
                 self.notify("Changes pushed", title="Sprint board", severity="information")
             except SprintTodoError as e:
                 self.notify(str(e), title="Push failed", severity="error")
-        else:
-            self.notify("No changes to push", title="Sprint board", severity="information")
 
     async def action_dismiss_modal(self) -> None:
         if self.app.screen is self:
