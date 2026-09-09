@@ -1,139 +1,155 @@
+/* git_tui.tcss – lazygit-inspired theme with dynamic sizing and clear borders */
+
 Screen {
     layout: horizontal;
+    background: $background;
+    color: $text;
 }
 
+/* ---------- Left column: status, files, branches, commits, stash ---------- */
 #left-column {
     layout: vertical;
-    width: 30;
+    width: 35;
     height: 100%;
     overflow-y: auto;
+    background: $surface-darken-1;
+    padding: 0 1;
+    border-right: thick $primary-darken-2;
 }
 
-#status {
-    border: solid white;
-    width: 100%;
-    height: auto;
-    padding-left: 1;
-}
-
-#files {
-    border: solid white;
-    width: 100%;
-    height: 10;
-    overflow-y: auto;
-}
-
-#branches {
-    border: solid white;
-    width: 100%;
-    height: 10;
-    overflow-y: auto;
-}
-
-#commits {
-    border: solid white;
-    width: 100%;
-    height: 10;
-    overflow-y: auto;
-}
-
+/* Each section inside left column gets its own rounded border and margin */
+#status,
+#files,
+#branches,
+#commits,
 #stash {
-    border: solid white;
+    border: heavy round $primary-darken-1;
+    background: $surface;
+    margin-bottom: 1;
+    padding: 0 1;
     width: 100%;
-    height: auto;
+    height: auto;              /* let each section size to content */
 }
 
+/* Status section – keep compact */
+#status {
+    padding: 1;
+}
+
+/* File list – allow it to grow but not too much */
+#files {
+    height: 7;
+    overflow-y: auto;
+}
+
+/* Branch list – grow dynamically with number of branches */
+#branches {
+    min-height: 3;
+    height:10;
+    overflow-y: auto;          /* scroll inside if too many, but the section itself grows */
+}
+
+/* Commit list – similar to files */
+#commits {
+    min-height: 5;
+    max-height: 12;
+    overflow-y: auto;
+}
+
+/* Stash – compact, auto height */
+#stash {
+    min-height: 1;
+    padding: 1;
+}
+
+/* ---------- Right column: diff, conflicts, command log ---------- */
 #right-column {
     layout: vertical;
     width: 1fr;
     height: 100%;
+    background: $background;
+    padding: 1;
 }
 
 #diff {
-    border: solid white;
     width: 100%;
-    height: 1fr;
+    height: 2fr;
+    border: heavy round $primary-darken-1;
+    background: $surface;
+    padding: 1;
     overflow-y: auto;
+    margin-bottom: 1;
 }
 
 #conflicts {
-    border: solid red;
     width: 100%;
     height: auto;
-    display: none;
+    border: heavy round $error;
+    background: $surface;
+    padding: 1;
+    margin-bottom: 1;
+    display: none;             /* shown only when merge conflict exists */
 }
 
 #command-log {
-    border: solid white;
     width: 100%;
     height: 1fr;
+    border: heavy round $primary-darken-1;
+    background: $surface;
+    padding: 0;
     overflow-y: auto;
+    margin-bottom: 1;
 }
 
 #log-output {
     height: 1fr;
     width: 100%;
+    background: $surface;
 }
 
 #command-input {
     height: 3;
     width: 100%;
-}
-
-CommitModal {
-    align: center middle;
-    background: $background 60%;
-}
-
-#commit-modal-box {
-    width: 50;
-    height: auto;
-    border: solid white;
-    padding: 1 2;
     background: $surface;
+    border-top: solid $primary-darken-2;
 }
 
-TodoModal {
-    align: center middle;
-    background: $background 60%;
-}
-
-#todo-modal-box {
-    width: 50;
-    height: auto;
-    border: solid white;
-    padding: 1 2;
-    background: $surface;
-}
-
-CommandPaletteModal, BranchInputModal {
-    align: center middle;
-    background: $background 60%;
-}
-
-#palette-box, #branch-input-box {
-    width: 50;
-    height: auto;
-    border: solid white;
-    padding: 1 2;
-    background: $surface;
-}
-
-/* ---------------- Sprint board ---------------- */
-/* ---------------- Sprint board ---------------- */
-
+/* ---------- Modal styling (rounded corners, centered) ---------- */
+CommitModal,
+TodoModal,
+CommandPaletteModal,
+BranchInputModal,
+BranchSelectModal,
+AIControlModal,
 SprintBoardModal {
     align: center middle;
-    background: $background 60%;
+    background: $background 70%;
 }
 
+#commit-modal-box,
+#todo-modal-box,
+#palette-box,
+#branch-input-box,
+#branch-select-box,
+#ai-modal-container,
 #sprint-board-box {
-    width: 90%;
-    height: 80%;
-    border: solid white;
-    padding: 1 2;
+    border: thick round $primary;
     background: $surface;
+    padding: 1 2;
+    width: 70;
+    height: auto;
+    max-height: 85%;
+    overflow-y: auto;
+}
+
+/* ---------- Sprint board ---------- */
+#sprint-board-box {
+    width: 95%;
+    height: 85%;
+    padding: 1 2;
     layout: vertical;
+    background: $surface;
+    border: thick round $primary;
 }
 
 #sprint-title {
@@ -141,33 +157,33 @@ SprintBoardModal {
     height: auto;
     padding-bottom: 1;
     text-style: bold;
+    color: $accent;
 }
 
-/* Horizontal scrolling container for columns */
 #board-columns {
     layout: horizontal;
     width: 100%;
     height: 1fr;
     overflow-x: auto;
     overflow-y: hidden;
-    padding-bottom: 0;
-    align: left top;   /* horizontal left, vertical top */
+    padding-bottom: 1;
+    align: left top;
 }
 
-/* Columns are all equal width (set dynamically in Python) and fill height */
 .sprint-column {
     layout: vertical;
-    width: 30;             /* fallback, overridden in refresh_board */
+    width: 30;
     min-width: 25;
-    height: 1fr;           /* fill parent height */
-    border: solid white;
+    height: 1fr;
+    border: round $primary-darken-1;
     margin-right: 1;
     padding: 0 1;
-    overflow-y: auto;      /* vertical scroll inside column if tasks overflow */
+    overflow-y: auto;
+    background: $surface;
 }
 
 .sprint-column:focus-within {
-    border: solid $accent;
+    border: round $accent;
 }
 
 .column-header {
@@ -177,13 +193,14 @@ SprintBoardModal {
     background: $panel;
     text-style: bold;
     text-align: center;
+    color: $text;
 }
 
 .sprint-column ListView {
     width: 100%;
-    height: 1fr;           /* take remaining column height */
+    height: 1fr;
     min-height: 5;
-    overflow-y: auto;      /* scroll tasks vertically */
+    overflow-y: auto;
     border: none;
 }
 
@@ -202,28 +219,23 @@ SprintBoardModal {
     width: 100%;
     height: auto;
     max-height: 60%;
-    border: solid $accent;
+    border: round $accent;
     background: $surface;
     padding: 1;
     margin-bottom: 1;
     overflow-y: auto;
     display: none;
 }
-/* AI Control Modal */
-/* AI Control Modal */
-AIControlModal {
-    align: center middle;
-    background: $background 60%;
-}
 
+/* ---------- AI modal ---------- */
 #ai-modal-container {
-    width: 80%;
-    height: 80%;
-    border: solid white;
+    width: 85%;
+    height: 85%;
     padding: 1 2;
     background: $surface;
     layout: vertical;
     overflow-y: auto;
+    border: thick round $primary;
 }
 
 #ai-modal-container AICommitPanel {

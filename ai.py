@@ -26,8 +26,6 @@ Diff:
 
     def suggest(self, diff_text):
         prompt = self.build_prompt(diff_text)
-        # json_mode=True: forces the model to return a clean JSON object
-        # instead of prose/reasoning wrapped around it.
         raw_text = self._call_model(prompt, json_mode=True)
         return self._parse_json(raw_text)
 
