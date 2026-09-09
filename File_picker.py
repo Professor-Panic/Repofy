@@ -5,10 +5,11 @@ from textual.app import ComposeResult
 from textual.containers import Container
 from textual.screen import ModalScreen
 from textual.widgets import Input, Label, ListItem, ListView
-
-
 class FilePickerModal(ModalScreen):
-    BINDINGS = [("escape", "dismiss_modal", "Cancel")]
+    BINDINGS = [
+        ("escape", "dismiss_modal", "Cancel"),
+        ("o", "select_directory", "Select directory"),
+    ]
 
     def __init__(self, root: Path | None = None):
         super().__init__()
@@ -19,7 +20,7 @@ class FilePickerModal(ModalScreen):
         yield Container(
             Label("Open file", id="file-picker-title"),
             Label(id="file-picker-path"),
-            Input(placeholder="Filter files...", id="file-picker-filter"),
+            Input(placeholder="Filter directories...", id="file-picker-filter"),
             ListView(id="file-picker-list"),
             Input(placeholder="Command: ls, mkdir, rmdir, cd, pwd", id="file-picker-command"),
             Label(id="file-picker-status"),
@@ -46,7 +47,6 @@ class FilePickerModal(ModalScreen):
 
     def _path_from_argument(self, argument: str) -> Path:
         candidate = (self.current_path / argument).resolve()
-        candidate.relative_to(self.root_path)
         return candidate
 
     async def run_command(self, command: str) -> None:
@@ -84,10 +84,12 @@ class FilePickerModal(ModalScreen):
         self.query_one("#file-picker-command", Input).focus()
 
     def _entries(self) -> list[Path]:
+        """Return only directories (and skip .git)."""
         try:
             return sorted(
-                (entry for entry in self.current_path.iterdir() if entry.name != ".git"),
-                key=lambda entry: (entry.is_file(), entry.name.lower()),
+                (entry for entry in self.current_path.iterdir()
+                 if entry.is_dir() and entry.name != ".git"),
+                key=lambda entry: entry.name.lower(),
             )
         except OSError:
             return []
@@ -96,21 +98,27 @@ class FilePickerModal(ModalScreen):
         filter_text = self.query_one("#file-picker-filter", Input).value.lower()
         path_label = self.query_one("#file-picker-path", Label)
         list_view = self.query_one("#file-picker-list", ListView)
-        relative_path = self.current_path.relative_to(self.root_path)
-        path_label.update("/" if not relative_path.parts else f"/{relative_path}")
 
-        entries = []
-        if self.current_path != self.root_path:
-            entries.append(("..", "__parent__"))
+        # Display path relative to root or absolute
+        try:
+            relative = self.current_path.relative_to(self.root_path)
+            display_path = "/" + "/".join(relative.parts) if relative.parts else "/"
+        except ValueError:
+            display_path = str(self.current_path)
+        path_label.update(display_path)
+
+        # Build list items – only directories
+        items = []
+        if self.current_path != self.current_path.anchor:
+            items.append(ListItem(Label("..", markup=False), name="__parent__"))
         for entry in self._entries():
             if filter_text and filter_text not in entry.name.lower():
                 continue
-            label = f"[DIR] {entry.name}" if entry.is_dir() else entry.name
-            entries.append((label, str(entry)))
-
-        await list_view.clear()
-        for label, value in entries:
-            await list_view.append(ListItem(Label(label, markup=False), name=value))
+            # Since all entries are directories, we can label them plainly.
+            items.append(ListItem(Label(f"[cyan]\ue5ff [/] {entry.name}", markup=True), name=str(entry)))
+        list_view.remove_children()
+        await list_view.mount_all(items)
+        list_view.index = 0
         list_view.focus()
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
@@ -120,9 +128,12 @@ class FilePickerModal(ModalScreen):
             await self.refresh_entries()
             return
 
+        # Only directories are listed, so we can safely navigate.
         selected_path = Path(selected)
         if selected_path.is_dir():
             self.current_path = selected_path
             await self.refresh_entries()
-        else:
-            self.dismiss(selected_path)
+        # (No file branch – files are not shown)
+
+    def action_select_directory(self) -> None:
+        self.dismiss(self.current_path)

@@ -119,7 +119,9 @@ def switchBranch(branch):
         text=True
     )
     return result.stdout, result.stderr, result.returncode
-
+def getCurrentBranch():
+    result = subprocess.run(["git", "rev-parse", "--abbrev-ref", "HEAD"], capture_output=True, text=True)
+    return result.stdout.strip()
 def doMerge(branch):
     result = subprocess.run(
         ["git", "merge", branch],
@@ -143,11 +145,20 @@ def doFetch():
     )
     return result.stdout, result.stderr, result.returncode
 def doPush():
-    result = subprocess.run(
-        ["git", "push"],
-        capture_output=True,
-        text=True
-    )
+    # First attempt normal push
+    result = subprocess.run(["git", "push"], capture_output=True, text=True)
+    if result.returncode == 0:
+        return result.stdout, result.stderr, result.returncode
+
+    # If failure due to missing upstream, retry with --set-upstream
+    if "has no upstream branch" in result.stderr:
+        branch = getCurrentBranch()
+        result2 = subprocess.run(
+            ["git", "push", "--set-upstream", "origin", branch],
+            capture_output=True, text=True
+        )
+        return result2.stdout, result2.stderr, result2.returncode
+
     return result.stdout, result.stderr, result.returncode
 def doStashFile(filename):
     result = subprocess.run(

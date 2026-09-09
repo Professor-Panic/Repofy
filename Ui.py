@@ -8,6 +8,7 @@ from textual.screen import ModalScreen
 from textual.message import Message
 from git_checker import *
 from Sprinter import SprintTodo, SprintTodoError
+from File_picker import FilePickerModal
 import asyncio
 def build_diff_display(diff_text: str) -> Text:
     result = Text()
@@ -80,6 +81,7 @@ class CommandPaletteModal(ModalScreen):
         ("l", "select_pull", "Pull"),
         ("p", "select_push", "Push"),
         ("t", "select_task_board", "Sprint board"),
+        ("f", "select_file_picker","Directory Picker"),
         ("escape", "dismiss_modal", "Cancel"),
     ]
 
@@ -96,6 +98,7 @@ class CommandPaletteModal(ModalScreen):
                 ListItem(Label("l  Pull"), name="pull"),
                 ListItem(Label("p  Push"), name="push"),
                 ListItem(Label("t  Sprint board"), name="taskboard"),
+                ListItem(Label("f  Change Directory"), name="dir_picker"),
             ),
             id="palette-box"
         )
@@ -112,6 +115,8 @@ class CommandPaletteModal(ModalScreen):
 
     def action_select_switch(self):
         self.dismiss(("need_branch", "switch"))
+    def action_select_file_picker(self):
+        self.dismiss(("dir_picker",None))
 
     def action_select_merge(self):
         self.dismiss(("need_branch", "merge"))
@@ -963,6 +968,19 @@ class Repofy(App):
                 log_display.log("git push (done)", stdout, stderr, returncode)
             elif action == "taskboard":
                 self.push_screen(SprintBoardModal(self.todo))
+            elif action == "dir_picker":
+                async def handle_dir_picker(path):
+                    if path is not None:
+                        if path.is_dir():
+                            os.chdir(path)   # change the process’s working directory
+                        # refresh all relevant UI components
+                        await self.query_one(FileDisplay).refresh_display(force=True)
+                        self.query_one(StatusDisplay).check_status()
+                        await self.query_one(BranchDisplay).refresh_display()
+                        await self.query_one(CommitDisplay).refresh_display()
+                        await self.query_one(ConflictDisplay).refresh_display()
+                        self.notify(f"Changed directory to {path}", title="Directory changed")
+                self.push_screen(FilePickerModal(), handle_dir_picker)
 
         self.push_screen(CommandPaletteModal(), handle_choice)
 
