@@ -104,6 +104,7 @@ def suggest_commit_message(diff_text):
 
 #---------------COMMIT MESSAGE QUALITY CHECK--------------
 #Shows judgment, not just generation.
+#source => https://www.conventionalcommits.org/en/v1.0.0/#specification
 CONVENTIONAL_TYPES = ("feat", "fix", "chore", "docs", "refactor", "test", "style", "perf")
 
 def check_conventional_format(summary):
@@ -111,6 +112,7 @@ def check_conventional_format(summary):
     Checks whether a commit summary follows Conventional Commits style, e.g. 'feat: add login screen' or 'fix(auth): handle expired tokens'.
     Returns (is_valid, corrected_summary). If invalid, corrected_summary guesses a reasonable prefix rather than leaving it unformatted.
     """
+    #Reference => Python re module docs -> https://docs.python.org/3/library/re.html
     pattern = r"^(" + "|".join(CONVENTIONAL_TYPES) + r")(\([\w\-]+\))?: .+"
     if re.match(pattern, summary):
         return True, summary
@@ -133,6 +135,7 @@ def summarize_diff(diff_text):
     files={}
     current_file = None
 
+    #Resource : https://git-scm.com/docs/git-diff
     for line in diff_text.splitlines():
         if line.startswith("diff --git"):
             # line looks like: diff --git a/path/to/file.py b/path/to/file.py
