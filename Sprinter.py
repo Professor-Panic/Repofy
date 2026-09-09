@@ -113,7 +113,7 @@ class SprintTodo:
             # The branch doesn't exist on the remote yet -- this must be
             # the very first push. Start a brand new, empty branch
             self._git("worktree", "add", "--detach", path)
-            # I don't need it to copy the files from main
+            # I don't need it to copy  all the files from main
             self._git("checkout", "--orphan", self.main_branch, cwd=path)
             try:
                 self._git("rm", "-rf", "--quiet", ".", cwd=path)
@@ -126,13 +126,11 @@ class SprintTodo:
         if self._worktree_dir:
             try:
                 self._git("worktree", "remove", "--force", self._worktree_dir)
-            except SprintTodoError:
-                pass  # best-effort cleanup
+            except:
+                pass  
             self._worktree_dir = None
 
     def close(self):
-        """Tear down the scratch worktree. Call when you're done with this
-        object (main() below does this in a finally block)."""
         self._release_worktree()
 
     def _file_in_worktree(self) -> str:
@@ -149,8 +147,6 @@ class SprintTodo:
         self._pending_ops = []
 
     def pull(self):
-        """Set up (or refresh) our scratch checkout and load TODO.md from
-        it into memory."""
         self._ensure_worktree()
         self._reload_from_worktree()
 
