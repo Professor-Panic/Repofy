@@ -572,6 +572,8 @@ class SprintBoardModal(ModalScreen):
 
 class StatusDisplay(Container):
     is_git = reactive(False)
+    current_branch = reactive("")
+    latest_commit = reactive("")
 
     def on_mount(self) -> None:
         self.check_status()
@@ -579,15 +581,28 @@ class StatusDisplay(Container):
 
     def check_status(self) -> None:
         self.is_git = is_git_repo()
+        if self.is_git:
+            self.current_branch = getCurrentBranch()
+            commits = getCommitsList()
+            if commits:
+                self.latest_commit = commits[0]["line"]
+            else:
+                self.latest_commit = ""
+        else:
+            self.current_branch = ""
+            self.latest_commit = ""
 
     def watch_is_git(self, is_git: bool) -> None:
+        self.refresh_display()
+    def refresh_display(self):
         self.remove_children()
-        if is_git:
-            self.mount(Label("Git repo detected"))
+        text=""
+        if self.is_git:
+            text = "Git repo detected"
+            self.mount(Label(f"[green]{text}[/green]"))
         else:
-            self.mount(Label("Not a git repository"))
-
-
+            text="Not a git repo"
+            self.mount(Label(f"[red]{text}[/red]"))
 class CommitDisplay(Container):
     def compose(self):
         yield ListView(id="Commit-list")
