@@ -918,10 +918,10 @@ class AIControlModal(ModalScreen):
 class Repofy(App):
     CSS_PATH = "git_tui.tcss"
     BINDINGS = [
-        ("c", "commit", "Commit code"),
-        ("p", "push", "Push code"),
-        ("l", "pull", "Pull code"),
-        ("ctrl+s", "stage_all", "Stage all changes"),
+        ("c", "commit", "Commit"),
+        ("p", "push", "Push"),
+        ("l", "pull", "Pull"),
+        ("ctrl+s", "stage_all", "Stage all"),
         ("t", "open_sprint_board", "Sprint board"),
         ("g", "ai_commit", "AI-suggest commit"),
         ("e", "ai_explain", "AI-explain diff"),
