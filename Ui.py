@@ -6,6 +6,7 @@ from textual.widgets import Footer, Header, Button, Digits, Label, TextArea
 from textual.widgets import ListView, ListItem, Label, Input
 from textual.screen import ModalScreen
 from textual.message import Message
+from textual.binding import Binding
 from git_checker import *
 from Sprinter import SprintTodo, SprintTodoError
 from File_picker import FilePickerModal
@@ -861,8 +862,8 @@ class CommandLogDisplay(Container):
 
 class AIControlModal(ModalScreen):
     BINDINGS = [
-        ("escape", "dismiss_modal", "Close"),
-        ("c", "commit_suggestion", "Commit with AI message"),
+        Binding("escape", "dismiss_modal", "Close", priority=True),
+        Binding("c", "commit_suggestion", "Commit with AI message", priority=True),
     ]
 
     def __init__(self, action: str | None = None):
@@ -872,7 +873,11 @@ class AIControlModal(ModalScreen):
     def compose(self) -> ComposeResult:
         yield Container(
             AICommitPanel(id="ai-panel-modal"),
-            Button("Close", id="close-ai-modal"),
+            Horizontal(
+                Button("Close", id="close-ai-modal"),
+                Button("Commit", id="commit-ai-message", variant="primary"),
+                id="ai-modal-buttons",
+            ),
             id="ai-modal-container"
         )
 
@@ -895,15 +900,20 @@ class AIControlModal(ModalScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close-ai-modal":
             self.dismiss(None)
+        elif event.button.id == "commit-ai-message":
+            self.action_commit_suggestion()
+
     def action_commit_suggestion(self):
         """Dismiss the modal and return the AI-generated commit message (if any)."""
         panel = self.query_one(AICommitPanel)
         message = panel.get_full_message() or panel.get_commit_message()
+        if not message.strip():
+            self.app.notify("No AI commit message generated yet.", title="AI commit", severity="warning")
+            return
         self.dismiss(message)
 
     def action_dismiss_modal(self):
         self.dismiss(None)
-
 
 class Repofy(App):
     CSS_PATH = "git_tui.tcss"
