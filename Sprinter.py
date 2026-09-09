@@ -5,7 +5,7 @@ import time
 from datetime import date
 
 REJECTION_MARKERS = ("[rejected]", "non-fast-forward", "fetch first", "stale info")
-
+DEFAULT_INDEX_NAME="Backlog"
 class SprintTodoError(Exception):
     pass
 
@@ -147,6 +147,9 @@ class SprintTodo:
             text = ""
         self._load_text(text)
         self._pending_ops = []
+        # Ensure there's at least one index (Backlog)
+        if not self.indices:
+            self.add_index(DEFAULT_INDEX_NAME)
 
     def pull(self):
         """Set up (or refresh) our scratch checkout and load TODO.md from
