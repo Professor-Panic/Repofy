@@ -1,13 +1,7 @@
-import os, re
+import re
 import json
 import requests #for ollama HTTP call
-from dotenv import load_dotenv
-from anthropic import Anthropic
 
-load_dotenv()  # reads .env and loads ANTHROPIC_API_KEY into the environment
-
-#client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-ANTHROPIC_MODEL = "claude-sonnet-5"
 OLLAMA_MODEL = "qwen2.5-coder:3b"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_TIMEOUT = 30
@@ -15,8 +9,9 @@ OLLAMA_TIMEOUT = 30
 class CommitMessageProvider:
      """
     Base class for anything that can turn a git diff into a commit message.
-    Both Claude and Ollama need the exact same prompt and the exact same
-    JSON-parsing step —> and each subclass only overrides the one method that's actually different.
+    Kept even with a single provider so the prompt-building and JSON-parsing
+    steps stay in one place -- if another provider gets added later, it only
+    has to override _call_model, same as before.
 
     """
      def build_prompt(self, diff_text):
@@ -48,23 +43,6 @@ class CommitMessageProvider:
          raise NotImplementedError("Subclasses must implement _call_model")
 
 
-     
-class AnthropicProvider(CommitMessageProvider):
-    def __init__(self):
-       # Client is created once when the provider is created, not on every call.
-       self.client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY"))
-
-    def _call_model(self, prompt):
-        response = self.client.messages.create(
-              model=ANTHROPIC_MODEL,
-              max_tokens=500,
-              messages=[{"role": "user", "content": prompt}]
-        )
-        # response.content is a list of content blocks; [0] is the text block.
-        return response.content[0].text
-    
-            
-
 class OllamaProvider(CommitMessageProvider):
     def __init__(self, model=OLLAMA_MODEL):
         self.model = model ## lets you spin up a provider with a different model later if you want
@@ -83,23 +61,14 @@ class OllamaProvider(CommitMessageProvider):
 
 
 """
-Tries Claude first (best quality). Falls back to local Ollama if the
-    API call fails for any reason — out of credits, no internet, bad key,
-    rate limited, etc. Whoever answers, the shape returned is identical:
-    {"summary": ..., "full": ...}.
+Ollama-only: no Claude fallback right now. Whatever calls this gets the
+    same shape back either way: {"summary": ..., "full": ..., "provider": "ollama"}.
 """
 
 def suggest_commit_message(diff_text):
-    try:
-        result = AnthropicProvider().suggest(diff_text)
-        result["provider"] = "claude" # tag the source before returning -> labelling
-        return result
-    except Exception as e: #A broad catch -> so that no matter why the primary failed, use the backup.
-        print(f"[ai] Anthropic call failed ({e}), falling back to Ollama...")
-
-        result = OllamaProvider().suggest(diff_text)
-        result["provider"] = "ollama"
-        return result
+    result = OllamaProvider().suggest(diff_text)
+    result["provider"] = "ollama" # tag the source before returning -> labelling
+    return result
 
 
 #---------------COMMIT MESSAGE QUALITY CHECK--------------
@@ -168,12 +137,5 @@ def explain_diff(diff_text):
                 {diff_text}
 
                 """ 
-     try:
-         text = AnthropicProvider()._call_model(prompt)
-         provider = "claude"
-     except Exception as e:
-         print(f"[ai] Anthropic call failed ({e}), falling back to Ollama.....")
-         text = OllamaProvider()._call_model(prompt)
-         provider = "ollama"
-
-     return {"explanation": text.strip(), "provider":provider}
+     text = OllamaProvider()._call_model(prompt)
+     return {"explanation": text.strip(), "provider": "ollama"}
