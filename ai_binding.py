@@ -34,12 +34,7 @@ class AICommitPanel(Container):
 
 
 
-    #---------SHARED HELPER: runs any AI call the same safe way-------
-    # Both "suggest a commit message" and "explain this diff" need the same three steps:
-    #   ->run the blocking call off the UI thread, 
-    #   ->catch failure the same way, 
-    #   ->update the provider label the same way
-    #  This is that shared shape, so neither action has to repeat it. 
+    #---------SHARED HELPER: runs any AI call the same safe way------
     async def _run_ai_task(self, ai_function, diff_text, task_label, notify_title):
        log_display = self._log_display()
        log_display.log(f"AI: {task_label}...", "Running...", "",0) 
