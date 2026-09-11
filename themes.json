@@ -1,5 +1,5 @@
 {
-  "current": "tokyo-night",
+  "current": "Rosewood",
   "themes": {
     "arctic": {
       "name": "arctic",
@@ -19,6 +19,20 @@
         "footer-key-foreground": "#88C0D0",
         "input-selection-background": "#81a1c1 35%"
       }
+    },
+    "Rosewood": {
+      "name": "Rosewood",
+      "primary": "#FF2D6F",
+      "secondary": "#E91E63",
+      "accent": "#FF4F9A",
+      "foreground": "#FCE4EC",
+      "background": "#1A0A12",
+      "success": "#7CFFB2",
+      "warning": "#FFD166",
+      "error": "#FF1744",
+      "surface": "#2A101C",
+      "panel": "#351321",
+      "dark": true
     }
   }
 }
