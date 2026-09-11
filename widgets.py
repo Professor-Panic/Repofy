@@ -2,7 +2,7 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalGroup, VerticalScroll, Container, ScrollableContainer, Horizontal, Vertical
 from textual.reactive import reactive
 from rich.text import Text
-from textual.widgets import Footer, Header, Button, Digits, Label, TextArea, Switch
+from textual.widgets import Footer, Header, Button, Digits, Label, TextArea
 from textual.widgets import ListView, ListItem, Label, Input
 from textual.theme import Theme
 from textual.screen import ModalScreen
@@ -934,44 +934,42 @@ class AIControlModal(ModalScreen):
 
 
 class ThemeMakerModal(ModalScreen):
-    """Lets the user build a custom Theme by filling in colors, e.g. arctic_theme
-    from the Textual docs. Dismisses with a dict of the values (suitable for
-    Theme(**data)) or None if cancelled."""
+    """Lets the user define a custom Theme as plain text, one `key=value`
+    per line (name, primary, background, ...), instead of a form full of
+    inputs. Because it's just text in a TextArea, the whole definition can
+    be selected and copied out to save/share elsewhere, or a definition
+    written elsewhere can be pasted straight in. Dismisses with a dict
+    suitable for Theme(**data), or None if cancelled."""
 
     BINDINGS = [("escape", "dismiss_modal", "Cancel")]
 
-    # (field id, label, placeholder/default)
-    FIELDS = [
-        ("name", "Theme name", "arctic"),
-        ("primary", "Primary", "#88C0D0"),
-        ("secondary", "Secondary", "#81A1C1"),
-        ("accent", "Accent", "#B48EAD"),
-        ("foreground", "Foreground", "#D8DEE9"),
-        ("background", "Background", "#2E3440"),
-        ("success", "Success", "#A3BE8C"),
-        ("warning", "Warning", "#EBCB8B"),
-        ("error", "Error", "#BF616A"),
-        ("surface", "Surface", "#3B4252"),
-        ("panel", "Panel", "#434C5E"),
-    ]
+    DEFAULT_TEXT = """\
+name=arctic
+primary=#88C0D0
+secondary=#81A1C1
+accent=#B48EAD
+foreground=#D8DEE9
+background=#2E3440
+success=#A3BE8C
+warning=#EBCB8B
+error=#BF616A
+surface=#3B4252
+panel=#434C5E
+dark=true
+
+# Optional extra styling variables, one per line:
+# variable.footer-key-foreground=#88C0D0
+"""
 
     def compose(self) -> ComposeResult:
-        rows = []
-        for field_id, label, placeholder in self.FIELDS:
-            rows.append(Label(label))
-            rows.append(Input(placeholder=placeholder, id=f"theme-{field_id}"))
-
         yield Container(
             Label("Create a new theme", id="theme-maker-title"),
-            VerticalScroll(
-                *rows,
-                Horizontal(
-                    Label("Dark mode"),
-                    Switch(value=True, id="theme-dark"),
-                    id="theme-dark-row",
-                ),
-                id="theme-maker-fields",
+            Label(
+                "key=value, one per line. Select all + copy to reuse this "
+                "elsewhere, or paste a definition in.",
+                id="theme-maker-hint",
             ),
+            TextArea(self.DEFAULT_TEXT, id="theme-text"),
             Horizontal(
                 Button("Cancel", id="cancel-theme"),
                 Button("Create", id="create-theme", variant="primary"),
@@ -981,7 +979,7 @@ class ThemeMakerModal(ModalScreen):
         )
 
     def on_mount(self) -> None:
-        self.query_one("#theme-name", Input).focus()
+        self.query_one("#theme-text", TextArea).focus()
 
     def action_dismiss_modal(self) -> None:
         self.dismiss(None)
@@ -992,28 +990,62 @@ class ThemeMakerModal(ModalScreen):
         elif event.button.id == "create-theme":
             self._submit()
 
-    async def on_input_submitted(self, event: Input.Submitted) -> None:
-        # Let Enter on the last field submit the form; earlier fields just
-        # move focus so the user can tab/enter through the whole list.
-        if event.input.id == "theme-panel":
-            self._submit()
-
     def _submit(self) -> None:
-        name = self.query_one("#theme-name", Input).value.strip()
-        if not name:
-            self.app.notify("Give the theme a name first.", title="Theme maker", severity="warning")
-            self.query_one("#theme-name", Input).focus()
+        text = self.query_one("#theme-text", TextArea).text
+        try:
+            theme_data = self._parse(text)
+        except ValueError as err:
+            self.app.notify(str(err), title="Theme maker", severity="warning")
             return
 
-        theme_data = {"name": name}
-        for field_id, _, default in self.FIELDS:
-            if field_id == "name":
-                continue
-            value = self.query_one(f"#theme-{field_id}", Input).value.strip()
-            theme_data[field_id] = value or default
+        if not theme_data.get("name"):
+            self.app.notify("Give the theme a name first (name=...).", title="Theme maker", severity="warning")
+            return
 
-        theme_data["dark"] = self.query_one("#theme-dark", Switch).value
         self.dismiss(theme_data)
+
+    @staticmethod
+    def _parse(text: str) -> dict:
+        """Parse `key=value` lines into a dict suitable for Theme(**data).
+
+        - Blank lines and lines starting with '#' are ignored.
+        - `dark=true`/`false` (case-insensitive; also 1/0, yes/no, on/off)
+          becomes a real bool.
+        - `variable.<name>=<value>` lines are collected into a nested
+          "variables" dict, matching Theme's own `variables` field.
+        - Anything else is kept as a plain string field (name, primary,
+          background, foreground, etc.), so unknown/extra keys just get
+          passed through to Theme(**data).
+        """
+        theme_data: dict = {}
+        variables: dict = {}
+
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" not in line:
+                raise ValueError(f"Couldn't parse line (expected key=value): {raw_line!r}")
+
+            key, _, value = line.partition("=")
+            key = key.strip()
+            value = value.strip()
+            if not key:
+                continue
+
+            if key.lower() == "dark":
+                theme_data["dark"] = value.lower() in ("1", "true", "yes", "on")
+            elif key.startswith("variable."):
+                var_name = key[len("variable."):].strip()
+                if var_name:
+                    variables[var_name] = value
+            else:
+                theme_data[key] = value
+
+        if variables:
+            theme_data["variables"] = variables
+
+        return theme_data
 
 
 class ThemeSelectModal(ModalScreen):

@@ -1,5 +1,5 @@
 {
-  "current": "Rosewood",
+  "current": "carbon",
   "themes": {
     "arctic": {
       "name": "arctic",
@@ -33,6 +33,24 @@
       "surface": "#2A101C",
       "panel": "#351321",
       "dark": true
+    },
+    "carbon": {
+      "name": "carbon",
+      "primary": "#4A4A4A",
+      "secondary": "#6E6E6E",
+      "accent": "#00B8A9",
+      "foreground": "#E0E0E0",
+      "background": "#0D0D0D",
+      "success": "#4CAF50",
+      "warning": "#E0A82E",
+      "error": "#E05252",
+      "surface": "#161616",
+      "panel": "#1E1E1E",
+      "dark": true,
+      "variables": {
+        "block-cursor-text-style": "none",
+        "footer-key-foreground": "#00B8A9"
+      }
     }
   }
 }
