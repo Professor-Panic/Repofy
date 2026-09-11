@@ -77,3 +77,9 @@ def LoadTheme() -> dict:
 def LoadCustomThemes() -> dict:
     """Return every saved custom theme as {name: theme_data}."""
     return _load_all()["themes"]
+
+
+def SetCurrentTheme(name: str) -> None:
+    data = _load_all()
+    data["current"] = name
+    _save_all(data)

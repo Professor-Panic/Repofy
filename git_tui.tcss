@@ -121,7 +121,9 @@ CommandPaletteModal,
 BranchInputModal,
 BranchSelectModal,
 AIControlModal,
-SprintBoardModal {
+SprintBoardModal,
+ThemeMakerModal,
+ThemeSelectModal {
     align: center middle;
     background: $background 70%;
 }
@@ -132,7 +134,8 @@ SprintBoardModal {
 #branch-input-box,
 #branch-select-box,
 #ai-modal-container,
-#sprint-board-box {
+#sprint-board-box,
+#theme-select-box {
     border: thick round $primary;
     background: $surface;
     padding: 1 2;
@@ -254,5 +257,54 @@ SprintBoardModal {
 }
 
 #ai-modal-buttons Button {
+    margin-left: 1;
+}
+
+/* ---------- Theme maker modal ---------- */
+#theme-maker-box {
+    border: thick round $primary;
+    background: $surface;
+    padding: 1 2;
+    width: 70;
+    height: auto;
+    max-height: 85%;
+    layout: vertical;
+}
+
+#theme-maker-title {
+    width: 100%;
+    height: auto;
+    padding-bottom: 1;
+    text-style: bold;
+    color: $accent;
+}
+
+#theme-maker-fields {
+    height: 22;
+    max-height: 22;
+    overflow-y: auto;
+    padding-right: 1;
+}
+
+#theme-dark-row {
+    height: 3;
+    align: left middle;
+    padding-top: 1;
+}
+
+#theme-dark-row Label {
+    width: auto;
+    padding-right: 1;
+}
+
+#theme-maker-buttons {
+    layout: horizontal;
+    width: 100%;
+    height: auto;
+    align: right middle;
+    padding-top: 1;
+}
+
+#theme-maker-buttons Button {
     margin-left: 1;
 }

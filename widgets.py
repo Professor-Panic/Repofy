@@ -2,8 +2,9 @@ from textual.app import App, ComposeResult
 from textual.containers import HorizontalGroup, VerticalScroll, Container, ScrollableContainer, Horizontal, Vertical
 from textual.reactive import reactive
 from rich.text import Text
-from textual.widgets import Footer, Header, Button, Digits, Label, TextArea
+from textual.widgets import Footer, Header, Button, Digits, Label, TextArea, Switch
 from textual.widgets import ListView, ListItem, Label, Input
+from textual.theme import Theme
 from textual.screen import ModalScreen
 from textual.message import Message
 from textual.binding import Binding
@@ -98,6 +99,8 @@ class CommandPaletteModal(ModalScreen):
         ("f", "select_file_picker", "Directory Picker"),
         ("g", "select_ai_commit", "AI commit"),
         ("e", "select_ai_explain", "AI explain"),
+        ("n", "select_theme_maker", "New theme"),
+        ("w", "select_theme_switch", "Switch theme"),
         ("escape", "dismiss_modal", "Cancel"),
     ]
 
@@ -117,6 +120,8 @@ class CommandPaletteModal(ModalScreen):
                 ListItem(Label("f  Change Directory"), name="dir_picker"),
                 ListItem(Label("g  AI commit suggestion"), name="ai_commit"),
                 ListItem(Label("e  AI explain diff"), name="ai_explain"),
+                ListItem(Label("n  Create new theme"), name="theme_maker"),
+                ListItem(Label("w  Switch theme"), name="theme_select"),
             ),
             id="palette-box"
         )
@@ -160,6 +165,12 @@ class CommandPaletteModal(ModalScreen):
 
     def action_select_ai_explain(self):
         self.dismiss(("ai_explain", None))
+
+    def action_select_theme_maker(self):
+        self.dismiss(("theme_maker", None))
+
+    def action_select_theme_switch(self):
+        self.dismiss(("theme_select", None))
 
     def on_list_view_selected(self, event: ListView.Selected) -> None:
         action = event.item.name
@@ -920,3 +931,117 @@ class AIControlModal(ModalScreen):
 
     def action_dismiss_modal(self):
         self.dismiss(None)
+
+
+class ThemeMakerModal(ModalScreen):
+    """Lets the user build a custom Theme by filling in colors, e.g. arctic_theme
+    from the Textual docs. Dismisses with a dict of the values (suitable for
+    Theme(**data)) or None if cancelled."""
+
+    BINDINGS = [("escape", "dismiss_modal", "Cancel")]
+
+    # (field id, label, placeholder/default)
+    FIELDS = [
+        ("name", "Theme name", "arctic"),
+        ("primary", "Primary", "#88C0D0"),
+        ("secondary", "Secondary", "#81A1C1"),
+        ("accent", "Accent", "#B48EAD"),
+        ("foreground", "Foreground", "#D8DEE9"),
+        ("background", "Background", "#2E3440"),
+        ("success", "Success", "#A3BE8C"),
+        ("warning", "Warning", "#EBCB8B"),
+        ("error", "Error", "#BF616A"),
+        ("surface", "Surface", "#3B4252"),
+        ("panel", "Panel", "#434C5E"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        rows = []
+        for field_id, label, placeholder in self.FIELDS:
+            rows.append(Label(label))
+            rows.append(Input(placeholder=placeholder, id=f"theme-{field_id}"))
+
+        yield Container(
+            Label("Create a new theme", id="theme-maker-title"),
+            VerticalScroll(
+                *rows,
+                Horizontal(
+                    Label("Dark mode"),
+                    Switch(value=True, id="theme-dark"),
+                    id="theme-dark-row",
+                ),
+                id="theme-maker-fields",
+            ),
+            Horizontal(
+                Button("Cancel", id="cancel-theme"),
+                Button("Create", id="create-theme", variant="primary"),
+                id="theme-maker-buttons",
+            ),
+            id="theme-maker-box",
+        )
+
+    def on_mount(self) -> None:
+        self.query_one("#theme-name", Input).focus()
+
+    def action_dismiss_modal(self) -> None:
+        self.dismiss(None)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cancel-theme":
+            self.dismiss(None)
+        elif event.button.id == "create-theme":
+            self._submit()
+
+    async def on_input_submitted(self, event: Input.Submitted) -> None:
+        # Let Enter on the last field submit the form; earlier fields just
+        # move focus so the user can tab/enter through the whole list.
+        if event.input.id == "theme-panel":
+            self._submit()
+
+    def _submit(self) -> None:
+        name = self.query_one("#theme-name", Input).value.strip()
+        if not name:
+            self.app.notify("Give the theme a name first.", title="Theme maker", severity="warning")
+            self.query_one("#theme-name", Input).focus()
+            return
+
+        theme_data = {"name": name}
+        for field_id, _, default in self.FIELDS:
+            if field_id == "name":
+                continue
+            value = self.query_one(f"#theme-{field_id}", Input).value.strip()
+            theme_data[field_id] = value or default
+
+        theme_data["dark"] = self.query_one("#theme-dark", Switch).value
+        self.dismiss(theme_data)
+
+
+class ThemeSelectModal(ModalScreen):
+    """Lists every registered theme (built-in + custom) so the user can pick
+    one to switch to. Dismisses with the chosen theme name, or None."""
+
+    BINDINGS = [("escape", "dismiss_modal", "Cancel")]
+
+    def compose(self) -> ComposeResult:
+        yield Container(
+            Label("Select a theme:"),
+            ListView(id="theme-select-list"),
+            id="theme-select-box",
+        )
+
+    async def on_mount(self) -> None:
+        list_view = self.query_one("#theme-select-list", ListView)
+        await list_view.clear()
+        current = self.app.theme
+        for name in sorted(self.app.available_themes.keys()):
+            marker = "*" if name == current else " "
+            await list_view.append(
+                ListItem(Label(f"{marker} {name}", markup=False), name=name)
+            )
+        list_view.focus()
+
+    def action_dismiss_modal(self):
+        self.dismiss(None)
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        self.dismiss(event.item.name)

@@ -2,13 +2,14 @@ from textual.app import App, ComposeResult
 from textual.containers import Container
 from textual.widgets import Footer, Header
 from textual.binding import Binding
+from textual.theme import Theme
 from git_checker import *
 from Sprinter import SprintTodo,SprintTodoError
 from widgets import (
     StatusDisplay, FileDisplay, BranchDisplay, CommitDisplay,
     StashDisplay, DiffDisplay, ConflictDisplay, CommandLogDisplay,
     CommitModal, AIControlModal, SprintBoardModal, BranchSelectModal,
-    CommandPaletteModal,BranchInputModal
+    CommandPaletteModal,BranchInputModal, ThemeMakerModal, ThemeSelectModal
 )
 from File_picker import FilePickerModal
 from themes import *
@@ -31,9 +32,11 @@ class Repofy(App):
     def __init__(self):
         super().__init__()
         self.todo = SprintTodo()
-        data=LoadTheme()
-        print(data)
-        self.theme=LoadTheme()["name"]
+        # Register every custom theme that's been created before, so they're
+        # all selectable (not just the one that was active last time).
+        for theme_data in LoadCustomThemes().values():
+            self.register_theme(Theme(**theme_data))
+        self.theme = LoadTheme()["name"]
     def compose(self):
         yield Header(show_clock=True)
         yield Footer()
@@ -187,6 +190,27 @@ class Repofy(App):
 
             elif action == "ai_explain":
                 self.push_screen(AIControlModal(action="explain"))
+
+            elif action == "theme_maker":
+                async def handle_new_theme(theme_data: dict | None) -> None:
+                    if theme_data is None:
+                        return
+                    theme = Theme(**theme_data)
+                    self.register_theme(theme)
+                    self.theme = theme.name
+                    SaveTheme(theme_data)
+                    self.notify(f"Theme '{theme.name}' created and applied.", title="Theme maker")
+
+                self.push_screen(ThemeMakerModal(), handle_new_theme)
+
+            elif action == "theme_select":
+                async def handle_theme_choice(name: str | None) -> None:
+                    if name is None:
+                        return
+                    self.theme = name
+                    SetCurrentTheme(name)
+
+                self.push_screen(ThemeSelectModal(), handle_theme_choice)
 
         self.push_screen(CommandPaletteModal(), handle_choice)
 
