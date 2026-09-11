@@ -1,0 +1,238 @@
+import os
+import subprocess
+import shlex
+def getFiles():
+    result = subprocess.run(
+    ["git", "status", "--porcelain"],
+    capture_output=True,
+    text=True)
+    return result.stdout
+def GetFilesList():
+    output = getFiles()
+    files = []
+    for line in output.splitlines():
+        if not line:
+            continue
+        staged_status = line[0]
+        unstaged_status = line[1]
+        filename = line[3:]
+        files.append({
+            "filename": filename,
+            "staged": staged_status,
+            "unstaged": unstaged_status,
+        })
+    return files
+
+def getBranches():
+    result= subprocess.run(
+    ["git", "branch"],
+    capture_output=True,
+    text=True)
+    return result.stdout
+def GetBranchesList():
+    output=getBranches()
+    branches=[]
+    for line in output.splitlines():
+        if not line:
+            continue
+        branches.append(line)
+    return branches
+def getDiff(filename):
+    result= subprocess.run(
+    ["git", "diff",filename],
+    capture_output=True,
+    text=True)
+    return result.stdout
+
+def getStagedDiff():
+     """Returns the diff of everything currently staged (git diff --cached),
+    across all files — this is what a commit message should describe."""
+     result = subprocess.run(
+         ["git", "diff", "--cached"],#instead of --staged to match getConflicts()
+         capture_output=True,
+         text=True
+     )
+     return result.stdout
+
+def doCommit(message):
+    result = subprocess.run(
+        ["git", "commit", "-m", message],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+def getCommits():
+    result= subprocess.run(
+    ["git", "log","--oneline"],
+    capture_output=True,
+    text=True)
+    return result.stdout
+def getStashes():
+    result = subprocess.run(
+        ["git", "stash", "list"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout
+def doCommand(command):
+    try:
+        args = shlex.split(command)
+    except ValueError as e:
+        return "", f"Could not parse command: {e}", 1
+
+    try:
+        result = subprocess.run(
+            args,
+            capture_output=True,
+            text=True
+        )
+        return result.stdout, result.stderr, result.returncode
+    except FileNotFoundError:
+        return "", f"Command not found: {args[0]}", 127
+    except PermissionError:
+        return "", f"Permission denied: {args[0]}", 126
+def stageFile(filename):
+    result = subprocess.run(
+        ["git", "add", filename],
+        capture_output=True,
+        text=True
+    )
+    return result.returncode == 0
+
+def unstageFile(filename):
+    result = subprocess.run(
+        ["git", "restore", "--staged", filename],
+        capture_output=True,
+        text=True
+    )
+    return result.returncode == 0
+def stageAll():
+    result = subprocess.run(
+            ["git", "add", "."],
+            capture_output=True,
+            text=True
+        )
+    return result.stdout, result.stderr, result.returncode
+def is_git_repo(path="."):
+    return os.path.isdir(os.path.join(path, ".git"))
+def doStash():
+    result = subprocess.run(
+        ["git", "stash"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+
+def switchBranch(branch):
+    result = subprocess.run(
+        ["git", "checkout", branch],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+
+def doMerge(branch):
+    result = subprocess.run(
+        ["git", "merge", branch],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+
+def doPull():
+    result = subprocess.run(
+        ["git", "pull"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+def doFetch():
+    result = subprocess.run(
+        ["git", "fetch"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+def doPush():
+    result = subprocess.run(
+        ["git", "push"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+def doStashFile(filename):
+    result = subprocess.run(
+        ["git", "stash","--",filename],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+#for conflicts do this create a new file and add a class for Miscallenous put pull push and coflicts there
+#Thats basically it.
+
+def getConflicts():
+    """Returns a list of filenames that currently have unresolved merge conflicts."""
+    result = subprocess.run(
+        ["git", "diff", "--name-only", "--diff-filter=U"],
+        capture_output=True,
+        text=True
+    )
+    return [line for line in result.stdout.splitlines() if line]
+#Same with merging.Anything for it to be put in merger.
+
+class Merger:
+    def isMergeInProgress(path="."):
+        """True if a merge is currently in progress and awaiting resolution."""
+        return os.path.isfile(os.path.join(path, ".git", "MERGE_HEAD"))
+
+def abortMerge():
+    result = subprocess.run(
+        ["git", "merge", "--abort"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+
+def continueMerge():
+    """Completes the merge after conflicts have been resolved and staged."""
+    result = subprocess.run(
+        ["git", "commit", "--no-edit"],
+        capture_output=True,
+        text=True
+    )
+    return result.stdout, result.stderr, result.returncode
+#----Make this into a class.Anything ...yeah.Anythin regarding branches in brancher
+
+class BranchManager:
+     def __init__(self):
+        pass
+def createBranch(self,branch):
+    result = subprocess.run(
+            ["git", "checkout", "-b",branch],
+            capture_output=True,
+            text=True
+        )
+    return result.stdout, result.stderr, result.returncode
+def deleteBranch(branch):
+    result = subprocess.run(
+            ["git", "branch", "-d",branch],
+            capture_output=True,
+            text=True
+        )
+    return result.stdout, result.stderr, result.returncode
+def getCommitsList():
+    result = subprocess.run(
+        ["git", "log", "--pretty=format:%h|%s"],
+        capture_output=True,
+        text=True
+    )
+    commits = []
+    for line in result.stdout.splitlines():
+        if not line:
+            continue
+        h, _, subject = line.partition("|")
+        commits.append({"hash": h, "line": f"{h}  {subject}"})
+    return commits
+def getCommitDiff(commit_hash):
+    result = subprocess.run(["git", "show", commit_hash], capture_output=True, text=True)
+    return result.stdout
