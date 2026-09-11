@@ -11,6 +11,7 @@ from widgets import (
     CommandPaletteModal,BranchInputModal
 )
 from File_picker import FilePickerModal
+from themes import *
 import asyncio
 import os
 class Repofy(App):
@@ -30,7 +31,9 @@ class Repofy(App):
     def __init__(self):
         super().__init__()
         self.todo = SprintTodo()
-
+        data=LoadTheme()
+        print(data)
+        self.theme=LoadTheme()["name"]
     def compose(self):
         yield Header(show_clock=True)
         yield Footer()

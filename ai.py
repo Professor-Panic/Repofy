@@ -24,8 +24,7 @@ OLLAMA_TIMEOUT = 30
 # ================================================================
 class CommitMessageProvider:
     """
-    Base class for anything that can turn a git diff into a commit message.
-    All three providers (Groq, Anthropic, Ollama) share the same prompt,
+    Base class for All three providers (Groq, Anthropic, Ollama) share the same prompt,
     the same JSON parsing step, and the same public `suggest()` method —
     each subclass only overrides `_call_model`, which is the one thing
     that actually differs.
