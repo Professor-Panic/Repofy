@@ -108,7 +108,4 @@ python -m compileall .
 The project does not currently include automated tests or a packaging configuration.
 
 ## Known limitations
-
-- The AI commit assistant requires being run from inside a git repository with staged changes — an empty staged diff will show a warning rather than attempting a suggestion.
 - Cloud AI providers (Groq, Anthropic) require valid API keys and available credits; without them, or if they're rate-limited, the assistant transparently falls back to the local Ollama model.
-- `Brancher.py`, `Merger.py`, and `Stager.py` are placeholders reserved for future functionality and are not currently used by `app.py`.
