@@ -7,14 +7,10 @@ def fake_result(stdout="", stderr="", returncode=0):
     result.stderr = stderr
     result.returncode = returncode
     return result
-
-
 class TestGetFilesList(unittest.TestCase):
     @patch("git_checker.subprocess.run")
     def test_parses_porcelain_status_lines(self, mock_run):
-        mock_run.return_value = fake_result(
-            stdout="M  modified.py\n?? untracked.py\n A staged_new.py\n"
-        )
+        mock_run.return_value = fake_result(stdout="M  modified.py\n?? untracked.py\n A staged_new.py\n")
         files = git_checker.GetFilesList()
         self.assertEqual(len(files), 3)
         self.assertEqual(
@@ -126,7 +122,6 @@ class TestDoCommand(unittest.TestCase):
     def test_missing_executable_returns_127(self, mock_run):
         stdout, stderr, code = git_checker.doCommand("not-a-real-command")
         self.assertEqual(code, 127)
-
 
 if __name__ == "__main__":
     unittest.main()
