@@ -828,22 +828,6 @@ class FileDisplay(Container):
         stdout, stderr, returncode = await asyncio.to_thread(doStashFile, filename=filename)
         log_display.log(f"git stash  --{filename} (done)", stdout, stderr, returncode)
         await self.app.query_one(FileDisplay).refresh_display(force=True)
-
-
-class StashDisplay(Container):
-    def compose(self):
-        return []
-
-    def on_mount(self) -> None:
-        self.call_later(self.refresh_display)
-        self.set_interval(5, self.refresh_display)
-
-    async def refresh_display(self):
-        await self.remove_children()
-        stashes = getStashes()
-        self.mount(Label(stashes or "No stashes"))
-
-
 class CommandLogDisplay(Container):
     log_text = reactive("")
 
