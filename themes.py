@@ -34,16 +34,14 @@ DEFAULT_DATA = {
         "arctic": ARCTIC_THEME,
     },
 }
-
-
 def _load_all() -> dict:
     if not THEME_FILE.exists():
-        return copy.deepcopy(DEFAULT_DATA)
+        return DEFAULT_DATA
     with open(THEME_FILE, "r") as f:
         try:
             data = json.load(f)
         except json.JSONDecodeError:
-            return copy.deepcopy(DEFAULT_DATA)
+            return DEFAULT_DATA
     data.setdefault("current", DEFAULT_DATA["current"])
     data.setdefault("themes", {})
     return data
