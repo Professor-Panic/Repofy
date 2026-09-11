@@ -934,13 +934,6 @@ class AIControlModal(ModalScreen):
 
 
 class ThemeMakerModal(ModalScreen):
-    """Lets the user define a custom Theme as plain text, one `key=value`
-    per line (name, primary, background, ...), instead of a form full of
-    inputs. Because it's just text in a TextArea, the whole definition can
-    be selected and copied out to save/share elsewhere, or a definition
-    written elsewhere can be pasted straight in. Dismisses with a dict
-    suitable for Theme(**data), or None if cancelled."""
-
     BINDINGS = [("escape", "dismiss_modal", "Cancel")]
 
     DEFAULT_TEXT = """\
@@ -956,8 +949,7 @@ error=#BF616A
 surface=#3B4252
 panel=#434C5E
 dark=true
-
-# Optional extra styling variables, one per line:
+# Optional styling for non default stuff:
 # variable.footer-key-foreground=#88C0D0
 """
 
@@ -1007,7 +999,6 @@ dark=true
     @staticmethod
     def _parse(text: str) -> dict:
         """Parse `key=value` lines into a dict suitable for Theme(**data).
-
         - Blank lines and lines starting with '#' are ignored.
         - `dark=true`/`false` (case-insensitive; also 1/0, yes/no, on/off)
           becomes a real bool.
@@ -1026,7 +1017,6 @@ dark=true
                 continue
             if "=" not in line:
                 raise ValueError(f"Couldn't parse line (expected key=value): {raw_line!r}")
-
             key, _, value = line.partition("=")
             key = key.strip()
             value = value.strip()
@@ -1050,7 +1040,7 @@ dark=true
 
 class ThemeSelectModal(ModalScreen):
     """Lists every registered theme (built-in + custom) so the user can pick
-    one to switch to. Dismisses with the chosen theme name, or None."""
+    one to switch to."""
 
     BINDINGS = [("escape", "dismiss_modal", "Cancel")]
 
