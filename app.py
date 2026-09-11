@@ -22,6 +22,7 @@ class Repofy(App):
         ("p", "push", "Push"),
         ("l", "pull", "Pull"),
         ("ctrl+s", "stage_all", "Stage all"),
+        ("ctrl+r", "reload_all", "Reload"),
         ("t", "open_sprint_board", "Sprint board"),
         ("g", "ai_commit", "AI-suggest commit"),
         ("e", "ai_explain", "AI-explain diff"),
@@ -101,6 +102,15 @@ class Repofy(App):
         stdout, stderr, returncode = await asyncio.to_thread(stageAll)
         log_display.log(f'git add ." (done)', stdout, stderr, returncode)
         await self.query_one(FileDisplay).refresh_display(force=True)
+
+    async def action_reload_all(self):
+        self.query_one(StatusDisplay).check_status()
+        await self.query_one(FileDisplay).refresh_display(force=True)
+        await self.query_one(BranchDisplay).refresh_display()
+        await self.query_one(CommitDisplay).refresh_display()
+        await self.query_one(StashDisplay).refresh_display()
+        await self.query_one(ConflictDisplay).refresh_display()
+        self.notify("Reloaded from disk", title="Reload")
 
     async def action_open_sprint_board(self):
         if self.todo.main_branch is None:
@@ -214,4 +224,5 @@ class Repofy(App):
 
         self.push_screen(CommandPaletteModal(), handle_choice)
 if __name__ == "__main__":
-    Repofy().run()
+    app = Repofy()
+    app.run()

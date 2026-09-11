@@ -5,14 +5,6 @@ from log_display import CommandLogDisplay  # imported here, not at module scope,
 import ai
 import asyncio
 
-# class RepofyApp(App):
-#     BINDINGS = [
-#         ("g", "ai_commit", "AI-suggest commit"),
-#         ("e", "ai_explain", "AI-explain diff"),
-#         # ...your other bindings...
-#     ]
-
-
 class AICommitPanel(Container):
 
     def __init__(self, *args, **kwargs):

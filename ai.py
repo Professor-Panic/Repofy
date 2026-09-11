@@ -11,9 +11,7 @@ load_dotenv()  # loads GROQ_API_KEY and ANTHROPIC_API_KEY
 # ----- Provider settings -----
 GROQ_MODEL = "openai/gpt-oss-120b"
 GROQ_TIMEOUT = 30
-
 ANTHROPIC_MODEL = "claude-sonnet-5"
-
 OLLAMA_MODEL = "qwen2.5-coder:3b"
 OLLAMA_URL = "http://localhost:11434/api/generate"
 OLLAMA_TIMEOUT = 30
