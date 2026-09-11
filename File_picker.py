@@ -36,7 +36,9 @@ class FilePickerModal(ModalScreen):
 
     async def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "file-picker-filter":
-            await self.refresh_entries()
+            # Filtering shouldn't steal focus away from the field the user
+            # is actively typing in (see refresh_entries' focus_list arg).
+            await self.refresh_entries(focus_list=False)
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         if event.input.id != "file-picker-command":
@@ -94,7 +96,7 @@ class FilePickerModal(ModalScreen):
         except OSError:
             return []
 
-    async def refresh_entries(self) -> None:
+    async def refresh_entries(self, focus_list: bool = True) -> None:
         filter_text = self.query_one("#file-picker-filter", Input).value.lower()
         path_label = self.query_one("#file-picker-path", Label)
         list_view = self.query_one("#file-picker-list", ListView)
@@ -115,11 +117,12 @@ class FilePickerModal(ModalScreen):
             if filter_text and filter_text not in entry.name.lower():
                 continue
             # Since all entries are directories, we can label them plainly.
-            items.append(ListItem(Label(f"[cyan]\ue5ff [/] {entry.name}", markup=True), name=str(entry)))
+            items.append(ListItem(Label(f"[$footer-key-foreground]\ue5ff [/] {entry.name}", markup=True), name=str(entry)))
         list_view.remove_children()
         await list_view.mount_all(items)
         list_view.index = 0
-        list_view.focus()
+        if focus_list:
+            list_view.focus()
 
     async def on_list_view_selected(self, event: ListView.Selected) -> None:
         selected = event.item.name
