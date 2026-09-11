@@ -213,8 +213,5 @@ class Repofy(App):
                 self.push_screen(ThemeSelectModal(), handle_theme_choice)
 
         self.push_screen(CommandPaletteModal(), handle_choice)
-
-
 if __name__ == "__main__":
-    app = Repofy()
-    app.run()
+    Repofy().run()
