@@ -1,5 +1,5 @@
 from textual.app import App, ComposeResult
-from textual.containers import HorizontalGroup, VerticalScroll, Container, ScrollableContainer, Horizontal, Vertical
+from textual.containers import VerticalScroll, Container, ScrollableContainer, Horizontal, Vertical
 from textual.reactive import reactive
 from rich.text import Text
 from textual.widgets import Footer, Header, Button, Digits, Label, TextArea
@@ -35,7 +35,7 @@ class CommitModal(ModalScreen):
         super().__init__()
         self.initial_value = initial
 
-    def compose(self) -> ComposeResult:
+    def compose(self):
         yield Container(
             Label("Commit message:"),
             Input(placeholder="Type your commit message...", value=self.initial_value, id="modal-commit-input"),
